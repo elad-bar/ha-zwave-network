@@ -1,7 +1,7 @@
 FROM python:latest
 
-COPY index.html /
+COPY . /
 
 EXPOSE 6123
 
-CMD python3 -m http.server 6123
+ENTRYPOINT ["/bin/bash", "entry_point.sh"]
