@@ -22,3 +22,13 @@ services:
       - HA_URL=http://127.0.0.1:8123
       - HA_TOKEN=token
 ```
+
+## Home Assistant Allow CORS origin
+Since the call will be performed from another domain / IP and port,
+CORS origin setting must be approved by Home-Assistant, to do that add: 
+
+```yaml
+http:
+  cors_allowed_origins:
+    - URL of Docker
+```
