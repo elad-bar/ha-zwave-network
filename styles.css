@@ -1,4 +1,4 @@
-  /* Eric Meyer's CSS Reset */
+/* Eric Meyer's CSS Reset */
 html, body, div, span, applet, object, iframe,
 h1, h2, h3, h4, h5, h6, p, blockquote, pre,
 a, abbr, acronym, address, big, cite, code,
@@ -12,11 +12,11 @@ article, aside, canvas, details, embed,
 figure, figcaption, footer, header, hgroup,
 menu, nav, output, ruby, section, summary,
 time, mark, audio, video {
-  margin: 0;
-  padding: 0;
-  border: 0;
-  font: inherit;
-  vertical-align: baseline;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    font: inherit;
+    vertical-align: baseline;
 }
 
 /* HTML5 display-role reset for older browsers */
@@ -65,8 +65,8 @@ body {
 .wrapper {
     width: 100%;
     min-width: 1000px;
-    min-height: calc(100% - 100px);
-    height: calc(100% - 100px);
+    min-height: calc(100% - 50px);
+    height: calc(100% - 50px);
 }
 
 .node-details-content-item-title {
@@ -155,6 +155,7 @@ body {
     height: 50px;
     background: #00171f;
     position: relative;
+    display: none;
 }
 
 .footer-item {
@@ -170,28 +171,40 @@ body {
     text-align: center;
 }
 
-.footer-item-level-hub {
+.legend-title {
+    width: auto;
+    display: inline-block;
+}
+
+.legend-box {
+    width: 20px;
+    height: 20px;
+    display: inline-block;
+    border-radius: 5px;
+}
+
+.footer-item-level-hub, .legend-box-hub {
     background: #577590;
     color: white;
 }
 
-.footer-item-level-1 {
+.footer-item-level-1, .legend-box-level-1 {
     background: #43aa8b;
 }
 
-.footer-item-level-2 {
+.footer-item-level-2, .legend-box-level-2 {
     background: #90be6d;
 }
 
-.footer-item-level-3 {
+.footer-item-level-3, .legend-box-level-3 {
     background: #f9c74f;
 }
 
-.footer-item-level-4 {
+.footer-item-level-4, .legend-box-level-4 {
     background: #f8961e;
 }
 
-.footer-item-level-failed {
+.footer-item-level-failed, .legend-box-failed {
     background: #f94144;
     color: white;
 }
@@ -214,4 +227,14 @@ body {
 
 .node-details-content-item {
     padding-top: 5px;
+}
+
+.node-neighbor-item {
+    padding: 3px;
+    cursor: hand;
+    width: max-content;
+}
+
+.node-neighbor-item:hover {
+    text-decoration: underline;
 }

@@ -57,7 +57,7 @@ const ATTRIBUTES_MAPPING = {
     }
 };
 
-const CAPABILITY_INFO = {    
+const CAPABILITY_INFO = {
     "primaryController": {
         image: "primaryController.png",
         title: "Hub"
@@ -96,7 +96,7 @@ const options = {
     nodes: {
         shape: 'box',
         widthConstraint: {
-            maximum: 50
+            maximum: 60
         },
     },
     layout: {
@@ -158,9 +158,9 @@ const setCapabilityIcons = (selectedItem) => {
     const capabilities = getCapabilities(selectedItem);
 
     const capabilityImageKeys = Object.keys(CAPABILITY_INFO);
-    
+
     const availableCapabilities = capabilityImageKeys.filter(ck => capabilities.indexOf(ck) > -1);
-    
+
     const divIcons = document.createElement("div");
     divIcons.className = "node-details-content-item";
 
@@ -185,16 +185,16 @@ const setNeighbors = (selectedItem) => {
     const orderedNeighbors = {};
 
     neighbors.map(n => networkItems.filter(i => i.id === n)[0])
-             .forEach(i => {
-        let hopNeighbors = orderedNeighbors[i.hop];
+        .forEach(i => {
+            let hopNeighbors = orderedNeighbors[i.hop];
 
-        if(hopNeighbors === undefined) {
-            hopNeighbors = [];
-            orderedNeighbors[i.hop] = hopNeighbors;
-        }
+            if(hopNeighbors === undefined) {
+                hopNeighbors = [];
+                orderedNeighbors[i.hop] = hopNeighbors;
+            }
 
-        hopNeighbors.push(i);
-    });
+            hopNeighbors.push(i);
+        });
 
     hopKeys = Object.keys(HOP_COLORS).sort();
 
@@ -204,8 +204,12 @@ const setNeighbors = (selectedItem) => {
         if(items !== undefined) {
             items.forEach(n => {
                 const divNeighbor = document.createElement("div");
+                divNeighbor.className = "node-neighbor-item";
                 divNeighbor.style.color = n.color;
                 divNeighbor.innerText = n.label;
+                divNeighbor["nodeId"] = n.id;
+
+                divNeighbor.onclick = neighborClicked
 
                 divNeighbors.appendChild(divNeighbor);
             });
@@ -223,7 +227,7 @@ const setNeighbors = (selectedItem) => {
 const setDetailsItem = (container, title, content, breakAfter) => {
     const div = document.createElement("div");
     div.className = "node-details-content-item";
-    
+
     const titleDiv = document.createElement("div");
     titleDiv.innerHTML = title + ":";
     titleDiv.className = "node-details-content-item-title" + (breakAfter ? "" : " node-details-content-item-no-break");
@@ -235,7 +239,7 @@ const setDetailsItem = (container, title, content, breakAfter) => {
     if (!breakAfter){
         contentDiv.className = "node-details-content-item-no-break";
     }
-    
+
     div.appendChild(contentDiv);
 
     container.appendChild(div);
@@ -248,7 +252,7 @@ const setDetails = (selectedItem) => {
     const attr_keys = Object.keys(ATTRIBUTES_MAPPING);
     const attributes = selectedItem.data.attributes;
     const availableAttributes = {};
-    
+
     attr_keys.forEach(ak => {
         availableAttributes[ak] = attributes[ak];
     });
@@ -262,7 +266,7 @@ const setDetails = (selectedItem) => {
     }
 
     const div = document.createElement("div");
-    div.className = "";    
+    div.className = "";
 
     attr_keys.forEach(k => {
         const attrDetails = ATTRIBUTES_MAPPING[k];
@@ -274,6 +278,16 @@ const setDetails = (selectedItem) => {
     });
 
     nodeDetailsContent.appendChild(div);
+};
+
+const neighborClicked = (e) => {
+    const nodeId = e.target.nodeId;
+
+    networkView.selectNodes([nodeId]);
+
+    const selectedItem = getItem(nodeId);
+
+    selectedItemChanged(selectedItem);
 };
 
 const selectedItemChanged = (selectedItem) => {
@@ -296,7 +310,8 @@ const getEntityEdges = (node_id, neighbors) => {
             return {
                 from: node_id,
                 to: n,
-                width: 1
+                width: 1,
+                dashes: true
             };
         });
 };
