@@ -1,0 +1,97 @@
+<html lang="en">
+<head>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.js"></script>
+    <script type="text/javascript" src="networkViewer.js"></script>
+    <script type="text/javascript" src="home-assistant.js"></script>
+
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis-network.min.css" rel="stylesheet" type="text/css" />
+    <link href="styles.css" rel="stylesheet" type="text/css" />
+    <title>Z-Wave Network Viewer</title>
+</head>
+<body>
+
+
+<div class="wrapper">
+
+    <header class="header">
+        <div class="header-text">Z-Wave Network Viewer</div>
+    </header><!-- .header-->
+
+    <div class="middle">
+
+        <div class="container">
+            <main class="content">
+                <div id="network" class="content-network"></div>
+            </main><!-- .content -->
+        </div><!-- .container-->
+
+        <aside class="right-sidebar" id="sidebar">
+            <div id="node-data" class="node-data">
+                <div class="node-header" id="node-name">Entity Name</div>
+
+                <div class="node-item-section" id="node-details">
+                    <div class="node-details-content" id="node-details-content">
+
+                    </div>
+                </div>
+
+                <div class="node-item-section" id="node-neighbors">
+                    <div class="node-item-title" id="node-neighbors-title">Neighbors:</div>
+                    <div class="node-neighbors-content" id="node-neighbors-content">
+
+                    </div>
+                </div>
+            </div>
+        </aside><!-- .right-sidebar -->
+    </div><!-- .middle-->
+</div><!-- .wrapper -->
+
+<footer class="footer">
+    <div>
+        <div class="footer-item">
+            <div class="footer-item-level-hub">Hub</div>
+        </div>
+        <div class="footer-item">
+            <div class="footer-item-level-1">1 Hops</div>
+        </div>
+        <div class="footer-item">
+            <div class="footer-item-level-2">2 Hops</div>
+        </div>
+        <div class="footer-item">
+            <div class="footer-item-level-3">3 Hops</div>
+        </div>
+        <div class="footer-item">
+            <div class="footer-item-level-4">4 Hops</div>
+        </div>
+        <div class="footer-item">
+            <div class="footer-item-level-failed">Failed</div>
+        </div>
+    </div>
+</footer><!-- .footer -->
+
+<script type="text/javascript">
+    const container = document.getElementById('network');
+    const sidebar = document.getElementById('sidebar');
+
+    fetch(`${HA_URL}/api/states`, {
+        headers: new Headers({
+            "Authorization": "Bearer " + HA_TOKEN
+        }),
+    }).then(response => {
+        if (!response.ok) throw new Error(response.status);
+        return response.json();
+    }).then( json => {
+        //Filter ZWave devices
+        return json.filter(e => e.entity_id.startsWith("zwave."));
+    }).then(entities => {
+        //Set hop
+        initialize(entities);
+
+        return entities;
+    }).catch(e => console.log(e));
+
+</script>
+
+
+</body>
+</html>

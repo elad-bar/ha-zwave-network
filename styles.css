@@ -1,0 +1,198 @@
+  /* Eric Meyer's CSS Reset */
+html, body, div, span, applet, object, iframe,
+h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+a, abbr, acronym, address, big, cite, code,
+del, dfn, em, img, ins, kbd, q, s, samp,
+small, strike, strong, sub, sup, tt, var,
+b, u, i, center,
+dl, dt, dd, ol, ul, li,
+fieldset, form, label, legend,
+table, caption, tbody, tfoot, thead, tr, th, td,
+article, aside, canvas, details, embed,
+figure, figcaption, footer, header, hgroup,
+menu, nav, output, ruby, section, summary,
+time, mark, audio, video {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font: inherit;
+  vertical-align: baseline;
+}
+
+/* HTML5 display-role reset for older browsers */
+article, aside, details, figcaption, figure,
+footer, header, hgroup, menu, nav, section {
+    display: block;
+}
+
+body {
+    line-height: 1;
+}
+
+ol, ul {
+    list-style: none;
+}
+
+blockquote, q {
+    quotes: none;
+}
+
+blockquote:before, blockquote:after,
+q:before, q:after {
+    content: none;
+}
+
+table {
+    border-collapse: collapse;
+    border-spacing: 0;
+}
+
+/* End of Eric Meyer's CSS Reset */
+
+html {
+    height: 100%;
+}
+
+article, aside, details, figcaption, figure, footer, header, hgroup, main, nav, section, summary {
+    display: block;
+}
+
+body {
+    font: 12px/18px Arial, sans-serif;
+    height: 100%;
+}
+
+.wrapper {
+    width: 100%;
+    min-width: 1000px;
+    min-height: calc(100% - 100px);
+    height: calc(100% - 100px);
+}
+
+.node-details-content-item-title {
+    font-weight: bold;
+}
+
+/* Header
+-----------------------------------------------------------------------------*/
+.header {
+    height: 50px;
+    background: #00171f;
+    color: white;
+    font-size: 20pt;
+}
+
+.header-text {
+    padding: 15px
+}
+
+
+/* Middle
+-----------------------------------------------------------------------------*/
+.middle {
+    width: 100%;
+    position: relative;
+}
+.middle:after {
+    display: table;
+    clear: both;
+    content: '';
+}
+.container {
+    width: 100%;
+    float: left;
+    overflow: hidden;
+    background: #00171f;
+}
+.content {
+    padding: 0 290px 0 0;
+}
+.node-data, .node-details-content, .node-neighbors-content {
+    padding: 5px;
+}
+
+.node-header {
+    padding: 5px;
+    font-size: 16pt;
+    color: white;
+}
+
+.node-item-section {
+    margin-top: 5px;
+    background: white;
+    border-radius: 5px;
+}
+
+.node-item-title {
+    padding: 5px;
+}
+
+.node-neighbors-title {
+    font-weight: bold;
+}
+
+/* Right Sidebar
+-----------------------------------------------------------------------------*/
+.right-sidebar {
+    float: left;
+    width: 290px;
+    margin-left: -290px;
+    position: relative;
+    background: #00171f;
+    height: 100%;
+    display: none;
+}
+
+/* Footer
+-----------------------------------------------------------------------------*/
+.footer {
+    margin: 50px auto 0;
+    min-width: 1000px;
+    height: 50px;
+    background: #00171f;
+    position: relative;
+}
+
+.footer-item {
+    padding: 5px;
+    display: inline-block;
+}
+
+.footer-item-level-hub, .footer-item-level-1, .footer-item-level-2, .footer-item-level-3, .footer-item-level-4, .footer-item-level-failed {
+    padding: 5px;
+    border-radius: 10px;
+    width: 120px;
+    font-size: 14pt;
+    text-align: center;
+}
+
+.footer-item-level-hub {
+    background: #577590;
+    color: white;
+}
+
+.footer-item-level-1 {
+    background: #43aa8b;
+}
+
+.footer-item-level-2 {
+    background: #90be6d;
+}
+
+.footer-item-level-3 {
+    background: #f9c74f;
+}
+
+.footer-item-level-4 {
+    background: #f8961e;
+}
+
+.footer-item-level-failed {
+    background: #f94144;
+    color: white;
+}
+
+.content-network {
+    width: 100%;
+    height: 100%;
+}
