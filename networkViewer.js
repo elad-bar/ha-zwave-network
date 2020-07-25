@@ -219,7 +219,7 @@ const selectedItemChanged = (selectedItem) => {
         const attrName = ATTRIBUTES_MAPPING[k];
         const attrValue = attributes[k];
 
-        if (attrValue !== undefined) {
+        if (attrValue !== undefined && attrValue !== "Unknown") {
             const detailItem = `<span><span class="node-details-content-item-title">${attrName}:</span></br> ${attrValue}</span>`;
 
             detailItems.push(detailItem);
