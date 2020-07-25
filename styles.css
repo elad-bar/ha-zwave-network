@@ -125,6 +125,10 @@ body {
 
 .node-item-title {
     padding: 5px;
+    border-radius: 5px 5px 0 0;
+    background: #fe5f55;
+    color: white;
+    font-size: 12pt;
 }
 
 .node-neighbors-title {
@@ -200,4 +204,14 @@ body {
 .node-capability-icon {
     width: 40px;
     padding: 3px;
+}
+
+.node-details-content-item-no-break {
+    display: inline-block;
+    width: auto;
+    padding-right: 5px;
+}
+
+.node-details-content-item {
+    padding-top: 5px;
 }

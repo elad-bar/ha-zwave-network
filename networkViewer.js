@@ -27,11 +27,34 @@ const HOP_COLORS = {
 };
 
 const ATTRIBUTES_MAPPING = {
-    "manufacturer_name": "Manufacturer",
-    "product_name": "Product name",
-    "query_stage": "Query stage",
-    "application_version": "Version",
-    "battery_level": "Battery level"    
+    "entity_id": {
+        title: "Entity Id",
+        breakAfter: true
+    },
+    "product_name": {
+        title: "Product name",
+        breakAfter: true
+    },
+    "manufacturer_name": {
+        title: "Manufacturer",
+        breakAfter: false
+    },
+    "state": {
+        title: "State",
+        breakAfter: false
+    },
+    "query_stage": {
+        title: "Query stage",
+        breakAfter: false
+    },
+    "battery_level": {
+        title: "Battery level",
+        breakAfter: false
+    },
+    "application_version": {
+        title: "Version",
+        breakAfter: false
+    }
 };
 
 const CAPABILITY_INFO = {    
@@ -131,7 +154,7 @@ const getCapabilities = (selectedItem) => {
     return capabilities;
 };
 
-const setCapabilityIcons = (elementId, selectedItem) => {
+const setCapabilityIcons = (selectedItem) => {
     const capabilities = getCapabilities(selectedItem);
 
     const capabilityImageKeys = Object.keys(CAPABILITY_INFO);
@@ -139,6 +162,7 @@ const setCapabilityIcons = (elementId, selectedItem) => {
     const availableCapabilities = capabilityImageKeys.filter(ck => capabilities.indexOf(ck) > -1);
     
     const divIcons = document.createElement("div");
+    divIcons.className = "node-details-content-item";
 
     availableCapabilities.forEach(ck => {
         const img = document.createElement("img");
@@ -151,11 +175,11 @@ const setCapabilityIcons = (elementId, selectedItem) => {
         divIcons.appendChild(img);
     });
 
-    const element = document.getElementById(elementId);
+    const element = document.getElementById('node-details-content');
     element.appendChild(divIcons);
 }
 
-const setNeighbors = (elementId, selectedItem) => {
+const setNeighbors = (selectedItem) => {
     const neighbors = selectedItem.neighbors;
     const divNeighbors = document.createElement("div");
     const orderedNeighbors = {};
@@ -188,15 +212,69 @@ const setNeighbors = (elementId, selectedItem) => {
         }
     });
 
-    
-
-    const element = document.getElementById(elementId);
+    const element = document.getElementById('node-neighbors-content');
     while (element.firstChild) {
         element.removeChild(element.lastChild);
     }
 
     element.appendChild(divNeighbors);
+};
+
+const setDetailsItem = (container, title, content, breakAfter) => {
+    const div = document.createElement("div");
+    div.className = "node-details-content-item";
+    
+    const titleDiv = document.createElement("div");
+    titleDiv.innerHTML = title + ":";
+    titleDiv.className = "node-details-content-item-title" + (breakAfter ? "" : " node-details-content-item-no-break");
+    div.appendChild(titleDiv);
+
+    const contentDiv = document.createElement("div");
+    contentDiv.innerHTML = content;
+
+    if (!breakAfter){
+        contentDiv.className = "node-details-content-item-no-break";
+    }
+    
+    div.appendChild(contentDiv);
+
+    container.appendChild(div);
 }
+
+const setDetails = (selectedItem) => {
+    const nodeName = document.getElementById('node-details-title');
+    nodeName.innerText = selectedItem.label;
+
+    const attr_keys = Object.keys(ATTRIBUTES_MAPPING);
+    const attributes = selectedItem.data.attributes;
+    const availableAttributes = {};
+    
+    attr_keys.forEach(ak => {
+        availableAttributes[ak] = attributes[ak];
+    });
+
+    availableAttributes["entity_id"] = selectedItem.data.entity_id;
+    availableAttributes["state"] = selectedItem.data.state;
+
+    const nodeDetailsContent = document.getElementById('node-details-content');
+    while (nodeDetailsContent.firstChild) {
+        nodeDetailsContent.removeChild(nodeDetailsContent.lastChild);
+    }
+
+    const div = document.createElement("div");
+    div.className = "";    
+
+    attr_keys.forEach(k => {
+        const attrDetails = ATTRIBUTES_MAPPING[k];
+        const attrValue = availableAttributes[k];
+
+        if (attrValue !== undefined && attrValue !== "Unknown") {
+            setDetailsItem(div, attrDetails.title, attrValue, attrDetails.breakAfter);
+        }
+    });
+
+    nodeDetailsContent.appendChild(div);
+};
 
 const selectedItemChanged = (selectedItem) => {
     const isSelected = selectedItem !== null;
@@ -206,55 +284,9 @@ const selectedItemChanged = (selectedItem) => {
         return;
     }
 
-    setText('node-name', selectedItem.label);
-
-    const attr_keys = Object.keys(ATTRIBUTES_MAPPING);
-    const attributes = selectedItem.data.attributes;
-    const detailItems = [];
-    
-    detailItems.push(`<span><span class="node-details-content-item-title">Entity Id:</span></br> ${selectedItem.data.entity_id}</span>`);
-    detailItems.push(`<span><span class="node-details-content-item-title">State:</span></br> ${selectedItem.data.state}</span>`);
-
-    attr_keys.forEach(k => {
-        const attrName = ATTRIBUTES_MAPPING[k];
-        const attrValue = attributes[k];
-
-        if (attrValue !== undefined && attrValue !== "Unknown") {
-            const detailItem = `<span><span class="node-details-content-item-title">${attrName}:</span></br> ${attrValue}</span>`;
-
-            detailItems.push(detailItem);
-        }
-
-    });
-
-    setTextItems('node-details-content', detailItems);
-    setCapabilityIcons('node-details-content', selectedItem);
-    setNeighbors('node-neighbors-content', selectedItem);
-};
-
-const setText = (elementId, text) => {
-    const element = document.getElementById(elementId);
-    element.innerText = text;
-};
-
-const setTextItems = (elementId, textItems) => {
-    const element = document.getElementById(elementId);
-    while (element.firstChild) {
-        element.removeChild(element.lastChild);
-    }
-
-    const div = document.createElement("div");
-
-    textItems.forEach(i => {
-        const item = document.createElement("item");
-        item.innerHTML = i;
-        div.appendChild(item);
-
-        const br = document.createElement("br");
-        div.appendChild(br);
-    });
-
-    element.appendChild(div);
+    setDetails(selectedItem);
+    setCapabilityIcons(selectedItem);
+    setNeighbors(selectedItem);
 };
 
 const getEntityEdges = (node_id, neighbors) => {
