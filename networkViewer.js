@@ -31,12 +31,39 @@ const ATTRIBUTES_MAPPING = {
     "product_name": "Product name",
     "query_stage": "Query stage",
     "application_version": "Version",
-    "capabilities": "Capabilities",
-    "is_awake": "Awake",
-    "is_failed": "Failed",
-    "is_ready": "Ready",
-    "is_zwave_plus": "Z-Wave Plus"
+    "battery_level": "Battery level"    
 };
+
+const CAPABILITY_INFO = {    
+    "primaryController": {
+        image: "primaryController.png",
+        title: "Hub"
+    },
+    "zwave_plus": {
+        image: "zwaveplus.png",
+        title: "Z-Wave Plus"
+    },
+    "beaming": {
+        image: "beaming.png",
+        title: "Beaming"
+    },
+    "listening": {
+        image: "listening.png",
+        title: "Listening"
+    },
+    "is_awake": {
+        image: "awake.png",
+        title: "Awake"
+    },
+    "routing": {
+        image: "routing.png",
+        title: "Routing"
+    },
+    "is_failed": {
+        image: "failed.png",
+        title: "Failed"
+    }
+}
 
 
 const options = {
@@ -73,6 +100,104 @@ const options = {
 const networkItems = [];
 let networkView = null;
 
+const checkCapability = (capabilities, attributes, key) => {
+    const capability = attributes[key];
+
+    if(capability !== undefined&& eval(capability) === true) {
+        capabilities.push(key);
+    }
+}
+
+const getCapabilities = (selectedItem) => {
+    const attributes = selectedItem.data.attributes;
+
+    let capabilities = attributes.capabilities;
+
+    if (capabilities === undefined) {
+        capabilities = [];
+    }
+
+    const additionalCapabilities = [
+        "is_awake",
+        "is_failed",
+        "is_ready",
+        "is_zwave_plus"
+    ];
+
+    additionalCapabilities.forEach(c => {
+        checkCapability(capabilities, attributes, c);
+    });
+
+    return capabilities;
+};
+
+const setCapabilityIcons = (elementId, selectedItem) => {
+    const capabilities = getCapabilities(selectedItem);
+
+    const capabilityImageKeys = Object.keys(CAPABILITY_INFO);
+    
+    const availableCapabilities = capabilityImageKeys.filter(ck => capabilities.indexOf(ck) > -1);
+    
+    const divIcons = document.createElement("div");
+
+    availableCapabilities.forEach(ck => {
+        const img = document.createElement("img");
+        const capabilityInfo = CAPABILITY_INFO[ck];
+
+        img.src = `images/${capabilityInfo.image}`;
+        img.className = "node-capability-icon";
+        img.title = capabilityInfo.title;
+
+        divIcons.appendChild(img);
+    });
+
+    const element = document.getElementById(elementId);
+    element.appendChild(divIcons);
+}
+
+const setNeighbors = (elementId, selectedItem) => {
+    const neighbors = selectedItem.neighbors;
+    const divNeighbors = document.createElement("div");
+    const orderedNeighbors = {};
+
+    neighbors.map(n => networkItems.filter(i => i.id === n)[0])
+             .forEach(i => {
+        let hopNeighbors = orderedNeighbors[i.hop];
+
+        if(hopNeighbors === undefined) {
+            hopNeighbors = [];
+            orderedNeighbors[i.hop] = hopNeighbors;
+        }
+
+        hopNeighbors.push(i);
+    });
+
+    hopKeys = Object.keys(HOP_COLORS).sort();
+
+    hopKeys.forEach(hk => {
+        items = orderedNeighbors[hk];
+
+        if(items !== undefined) {
+            items.forEach(n => {
+                const divNeighbor = document.createElement("div");
+                divNeighbor.style.color = n.color;
+                divNeighbor.innerText = n.label;
+
+                divNeighbors.appendChild(divNeighbor);
+            });
+        }
+    });
+
+    
+
+    const element = document.getElementById(elementId);
+    while (element.firstChild) {
+        element.removeChild(element.lastChild);
+    }
+
+    element.appendChild(divNeighbors);
+}
+
 const selectedItemChanged = (selectedItem) => {
     const isSelected = selectedItem !== null;
     sidebar.style.display = isSelected ? "block" : "none";
@@ -86,8 +211,7 @@ const selectedItemChanged = (selectedItem) => {
     const attr_keys = Object.keys(ATTRIBUTES_MAPPING);
     const attributes = selectedItem.data.attributes;
     const detailItems = [];
-    const neighborItems = [];
-
+    
     detailItems.push(`<span><span class="node-details-content-item-title">Entity Id:</span></br> ${selectedItem.data.entity_id}</span>`);
     detailItems.push(`<span><span class="node-details-content-item-title">State:</span></br> ${selectedItem.data.state}</span>`);
 
@@ -95,23 +219,17 @@ const selectedItemChanged = (selectedItem) => {
         const attrName = ATTRIBUTES_MAPPING[k];
         const attrValue = attributes[k];
 
-        const detailItem = `<span><span class="node-details-content-item-title">${attrName}:</span></br> ${attrValue}</span>`;
+        if (attrValue !== undefined) {
+            const detailItem = `<span><span class="node-details-content-item-title">${attrName}:</span></br> ${attrValue}</span>`;
 
-        detailItems.push(detailItem);
+            detailItems.push(detailItem);
+        }
 
     });
 
     setTextItems('node-details-content', detailItems);
-
-    const neighbors = attributes.neighbors;
-
-    neighbors.forEach(n => {
-        const neighbor = networkItems.filter(i => i.id === n)[0];
-
-        neighborItems.push(`${neighbor.label}`);
-    });
-
-    setTextItems('node-neighbors-content', neighborItems);
+    setCapabilityIcons('node-details-content', selectedItem);
+    setNeighbors('node-neighbors-content', selectedItem);
 };
 
 const setText = (elementId, text) => {
