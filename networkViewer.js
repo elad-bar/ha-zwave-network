@@ -1,12 +1,10 @@
 
-const HOP_COLORS = {
-    "-1": {
-        background: "#f94144",
-        fontColor: "white"
-    },
+const HOPS = {
     0: {
         background: "#577590",
-        fontColor: "white"
+        fontColor: "white",
+        title: "Hub",
+        classSuffix: "hub"
     },
     1: {
         background: "#43aa8b",
@@ -23,6 +21,12 @@ const HOP_COLORS = {
     4: {
         background: "#f8961e",
         fontColor: "black"
+    },
+    "-1": {
+        background: "#f94144",
+        fontColor: "white",
+        title: "Not connected",
+        classSuffix: "not-connected"
     }
 };
 
@@ -196,7 +200,7 @@ const setNeighbors = (selectedItem) => {
             hopNeighbors.push(i);
         });
 
-    hopKeys = Object.keys(HOP_COLORS).sort();
+    hopKeys = Object.keys(HOPS).sort();
 
     hopKeys.forEach(hk => {
         items = orderedNeighbors[hk];
@@ -280,6 +284,36 @@ const setDetails = (selectedItem) => {
     nodeDetailsContent.appendChild(div);
 };
 
+const loadHopsLegend = () => {
+    const container = document.getElementById("hops-legend");
+
+    const hopLegendTitle = document.createElement("div");
+    hopLegendTitle.className = "sidebar-section-title";
+    container.appendChild(hopLegendTitle);
+
+    const hops = Object.keys(HOPS);
+
+    hops.forEach(h => {
+        const currentHop = HOPS[h];
+        const text = currentHop.title === undefined ? `Hop ${h}` : currentHop.title;
+        const currentHopClassSuffix = currentHop.classSuffix === undefined ? `hop-${h}` : currentHop.classSuffix;
+
+        const hopContent = document.createElement("div");
+        hopContent.className = "sidebar-section-content";
+
+        const hopContentBox = document.createElement("div");
+        hopContentBox.className = `legend-box legend-box-${currentHopClassSuffix}`;
+        hopContent.appendChild(hopContentBox);
+
+        const hopContentText = document.createElement("div");
+        hopContentText.className = "legend-title";
+        hopContentText.innerText = text;
+        hopContent.appendChild(hopContentText);
+
+        container.appendChild(hopContent);
+    });
+};
+
 const neighborClicked = (e) => {
     const nodeId = e.target.nodeId;
 
@@ -291,6 +325,8 @@ const neighborClicked = (e) => {
 };
 
 const selectedItemChanged = (selectedItem) => {
+    const sidebar = document.getElementById("sidebar");
+
     const isSelected = selectedItem !== null;
     sidebar.style.display = isSelected ? "block" : "none";
 
@@ -366,16 +402,16 @@ const loadNetworkItems = (entities) => {
         const neighbors = attributes.neighbors;
         const name = attributes.friendly_name;
         const hop = attributes.hop;
-        const colorSet = HOP_COLORS[hop];
+        const currentHop = HOPS[hop];
 
         networkItems.push({
             id: node_id,
             label: `[${node_id}] ${name}`,
             hop: attributes.hop,
             neighbors: neighbors,
-            color: colorSet.background,
+            color: currentHop.background,
             font: {
-                color: colorSet.fontColor
+                color: currentHop.fontColor
             },
             edges: getEntityEdges(node_id, neighbors),
             data: entity
@@ -413,10 +449,10 @@ const getEdges = () => {
 
 const fixItemData = () => {
     networkItems.forEach(i => {
-        const colorSet = HOP_COLORS[i.hop];
+        const currentHop = HOPS[i.hop];
 
-        i.color = colorSet.background;
-        i.font.color = colorSet.fontColor;
+        i.color = currentHop.background;
+        i.font.color = currentHop.fontColor;
     });
 };
 
@@ -431,6 +467,8 @@ const loadNetworkView = (networkEdges) => {
         nodes: nodes,
         edges: edges
     };
+
+    const container = document.getElementById("network")
 
     networkView = new vis.Network(container, data, options);
 
@@ -456,6 +494,7 @@ const onSelect = (eventData, callback) => {
 };
 
 const initialize = (entities) => {
+    loadHopsLegend();
     setInitialHop(entities);
 
     loadNetworkItems(entities);

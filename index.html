@@ -26,78 +26,23 @@
 
         <aside class="right-sidebar" id="sidebar">
             <div id="node-data" class="node-data">
-                <div class="node-item-section" id="node-details">
-                    <div class="node-item-title" id="node-details-title"></div>
-                    <div class="node-details-content" id="node-details-content">
-
-                    </div>
+                <div class="sidebar-section" id="node-details">
+                    <div class="sidebar-section-title" id="node-details-title"></div>
+                    <div class="sidebar-section-content" id="node-details-content"></div>
                 </div>
 
-                <div class="node-item-section" id="node-neighbors">
-                    <div class="node-item-title" id="node-neighbors-title">Neighbors</div>
-                    <div class="node-neighbors-content" id="node-neighbors-content"></div>
+                <div class="sidebar-section" id="node-neighbors">
+                    <div class="sidebar-section-title" id="node-neighbors-title">Neighbors</div>
+                    <div class="sidebar-section-content" id="node-neighbors-content"></div>
                 </div>
 
-                <div class="node-item-section">
-                    <div class="node-item-title">Legend</div>
-                    <div class="node-neighbors-content" id="node-neighbors-content">
-                        <div class="legend-box legend-box-hub">&nbsp;</div>
-                        <div class="legend-title">Hub</div>
-                    </div>
-                    <div class="node-neighbors-content" id="node-neighbors-content">
-                        <div class="legend-box legend-box-level-1">&nbsp;</div>
-                        <div class="legend-title">Hop 1</div>
-                    </div>
-                    <div class="node-neighbors-content" id="node-neighbors-content">
-                        <div class="legend-box legend-box-level-2">&nbsp;</div>
-                        <div class="legend-title">Hop 2</div>
-                    </div>
-                    <div class="node-neighbors-content" id="node-neighbors-content">
-                        <div class="legend-box legend-box-level-3">&nbsp;</div>
-                        <div class="legend-title">Hop 3</div>
-                    </div>
-                    <div class="node-neighbors-content" id="node-neighbors-content">
-                        <div class="legend-box legend-box-level-4">&nbsp;</div>
-                        <div class="legend-title">Hop 4</div>
-                    </div>
-                    <div class="node-neighbors-content" id="node-neighbors-content">
-                        <div class="legend-box legend-box-failed">&nbsp;</div>
-                        <div class="legend-title">Not connected</div>
-
-                    </div>
-                </div>
+                <div class="sidebar-section" id="hops-legend"></div>
             </div>
         </aside><!-- .right-sidebar -->
     </div><!-- .middle-->
 </div><!-- .wrapper -->
 
-<footer class="footer">
-    <div>
-        <div class="footer-item">
-            <div class="footer-item-level-hub">Hub</div>
-        </div>
-        <div class="footer-item">
-            <div class="footer-item-level-1">1 Hops</div>
-        </div>
-        <div class="footer-item">
-            <div class="footer-item-level-2">2 Hops</div>
-        </div>
-        <div class="footer-item">
-            <div class="footer-item-level-3">3 Hops</div>
-        </div>
-        <div class="footer-item">
-            <div class="footer-item-level-4">4 Hops</div>
-        </div>
-        <div class="footer-item">
-            <div class="footer-item-level-failed">Not connected</div>
-        </div>
-    </div>
-</footer><!-- .footer -->
-
 <script type="text/javascript">
-    const container = document.getElementById('network');
-    const sidebar = document.getElementById('sidebar');
-
     fetch("/states.json")
     .then(response => {
         if (!response.ok) throw new Error(response.status);
