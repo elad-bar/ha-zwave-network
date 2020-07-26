@@ -159,7 +159,7 @@ const setCapabilityIcons = (selectedItem) => {
 
     const capabilityImageKeys = Object.keys(CAPABILITY_INFO);
 
-    const availableCapabilities = capabilityImageKeys.filter(ck => capabilities.indexOf(ck) > -1);
+    const availableCapabilities = capabilityImageKeys.filter(ck => capabilities !== undefined && capabilities.indexOf(ck) > -1);
 
     const divIcons = document.createElement("div");
     divIcons.className = "node-details-content-item";
@@ -353,7 +353,7 @@ const setInitialHop = (entities) => {
         const neighbors = attributes.neighbors;
         const capabilities = attributes.capabilities;
 
-        const isPrimaryController = capabilities.indexOf("primaryController") > -1;
+        const isPrimaryController = capabilities !== undefined && capabilities.indexOf("primaryController") > -1;
 
         attributes["hop"] = isPrimaryController ? 0 : neighbors === undefined ? 1 : -1;
     });

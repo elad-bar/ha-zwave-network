@@ -2,7 +2,6 @@
 <head>
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.js"></script>
     <script type="text/javascript" src="networkViewer.js"></script>
-    <script type="text/javascript" src="home-assistant.js"></script>
 
     <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis-network.min.css" rel="stylesheet" type="text/css" />
     <link href="styles.css" rel="stylesheet" type="text/css" />
@@ -99,11 +98,8 @@
     const container = document.getElementById('network');
     const sidebar = document.getElementById('sidebar');
 
-    fetch(`${HA_URL}/api/states`, {
-        headers: new Headers({
-            "Authorization": "Bearer " + HA_TOKEN
-        }),
-    }).then(response => {
+    fetch("/states.json")
+    .then(response => {
         if (!response.ok) throw new Error(response.status);
         return response.json();
     }).then( json => {

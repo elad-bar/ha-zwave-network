@@ -1,5 +1,3 @@
 
 .idea/*
-debug.log
-
-home-assistant.js
+venv/*
