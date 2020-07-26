@@ -438,7 +438,7 @@ const getEdges = () => {
         const fromItem = getItem(e.from);
         const toItem = getItem(e.to);
 
-        if (fromItem.hop < toItem.hop) {
+        if (fromItem.hop > -1 && fromItem.hop < toItem.hop) {
             filteredEdges.push(e);
         }
 
@@ -450,6 +450,10 @@ const getEdges = () => {
 const fixItemData = () => {
     networkItems.forEach(i => {
         const currentHop = HOPS[i.hop];
+
+        if(currentHop === undefined) {
+            currentHop = HOPS["-1"];
+        }
 
         i.color = currentHop.background;
         i.font.color = currentHop.fontColor;
