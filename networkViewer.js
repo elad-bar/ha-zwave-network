@@ -186,39 +186,43 @@ const setCapabilityIcons = (selectedItem) => {
 const setNeighbors = (selectedItem) => {
     const neighbors = selectedItem.neighbors;
     const divNeighbors = document.createElement("div");
+    const hasNeighbors = neighbors !== undefined;
+
     const orderedNeighbors = {};
 
-    neighbors.map(n => networkItems.filter(i => i.id === n)[0])
-        .forEach(i => {
-            let hopNeighbors = orderedNeighbors[i.hop];
+    if (hasNeighbors) {
+        neighbors.map(n => networkItems.filter(i => i.id === n)[0])
+            .forEach(i => {
+                let hopNeighbors = orderedNeighbors[i.hop];
 
-            if(hopNeighbors === undefined) {
-                hopNeighbors = [];
-                orderedNeighbors[i.hop] = hopNeighbors;
-            }
+                if(hopNeighbors === undefined) {
+                    hopNeighbors = [];
+                    orderedNeighbors[i.hop] = hopNeighbors;
+                }
 
-            hopNeighbors.push(i);
-        });
-
-    hopKeys = Object.keys(HOPS).sort();
-
-    hopKeys.forEach(hk => {
-        items = orderedNeighbors[hk];
-
-        if(items !== undefined) {
-            items.forEach(n => {
-                const divNeighbor = document.createElement("div");
-                divNeighbor.className = "node-neighbor-item";
-                divNeighbor.style.color = n.color;
-                divNeighbor.innerText = n.label;
-                divNeighbor["nodeId"] = n.id;
-
-                divNeighbor.onclick = neighborClicked
-
-                divNeighbors.appendChild(divNeighbor);
+                hopNeighbors.push(i);
             });
-        }
-    });
+
+        hopKeys = Object.keys(HOPS).sort();
+
+        hopKeys.forEach(hk => {
+            items = orderedNeighbors[hk];
+
+            if(items !== undefined) {
+                items.forEach(n => {
+                    const divNeighbor = document.createElement("div");
+                    divNeighbor.className = "node-neighbor-item";
+                    divNeighbor.style.color = n.color;
+                    divNeighbor.innerText = n.label;
+                    divNeighbor["nodeId"] = n.id;
+
+                    divNeighbor.onclick = neighborClicked
+
+                    divNeighbors.appendChild(divNeighbor);
+                });
+            }
+        });
+    }
 
     const element = document.getElementById('node-neighbors-content');
     while (element.firstChild) {
@@ -226,6 +230,10 @@ const setNeighbors = (selectedItem) => {
     }
 
     element.appendChild(divNeighbors);
+
+    if(!hasNeighbors) {
+        element.style.display = "none";
+    }
 };
 
 const setDetailsItem = (container, title, content, breakAfter) => {
@@ -339,9 +347,26 @@ const selectedItemChanged = (selectedItem) => {
     setNeighbors(selectedItem);
 };
 
+const getFirstHub = () => {
+    return networkItems.filter(n => n.isPrimaryController)[0]
+};
+
+const getDefaultEdge = (node_id) => {
+    const hub = getFirstHub();
+
+    return hub === undefined ?
+        [] :
+        [{
+            from: node_id,
+            to: hub.id,
+            width: 1,
+            dashes: true
+        }];
+};
+
 const getEntityEdges = (node_id, neighbors) => {
     return neighbors === undefined ?
-        [] :
+        getDefaultEdge() :
         neighbors.map(n => {
             return {
                 from: node_id,
@@ -359,12 +384,12 @@ const getItem = (node_id) => {
 const setItemHop = (currentItem) => {
     const currentHop = currentItem.hop;
 
-    if (currentItem.neighbors !== undefined) {
-        const neighbors = currentItem.neighbors.map(n => getItem(n));
-
-        neighbors
-            .filter(n => n.hop === -1 || n.hop > currentHop + 1)
-            .forEach(n => {
+    if (currentItem.edges !== undefined) {
+        currentItem.edges
+                   .map(n => getItem(n.to))
+                   .filter(n => n !== undefined)
+                   .filter(n => n.hop === -1 || n.hop > currentHop + 1)
+                   .forEach(n => {
                 n.hop = currentHop + 1;
 
                 setItemHop(n);
@@ -377,38 +402,24 @@ const setItemsHop = () => {
         .forEach(i => setItemHop(i));
 };
 
-const setInitialHop = (entities) => {
-    entities.forEach(e => {
-        const attributes = e.attributes;
-
-        if(attributes.neighbors === undefined) {
-            attributes.neighbors = [];
-            attributes.neighbors.push(1);
-        }
-
-        const neighbors = attributes.neighbors;
-        const capabilities = attributes.capabilities;
-
-        const isPrimaryController = capabilities !== undefined && capabilities.indexOf("primaryController") > -1;
-
-        attributes["hop"] = isPrimaryController ? 0 : neighbors === undefined ? 1 : -1;
-    });
-};
-
 const loadNetworkItems = (entities) => {
     entities.forEach(entity => {
         const attributes = entity.attributes;
         const node_id = attributes.node_id;
         const neighbors = attributes.neighbors;
         const name = attributes.friendly_name;
-        const hop = attributes.hop;
         const currentHop = HOPS[hop];
+        const capabilities = attributes.capabilities;
+
+        const isPrimaryController = capabilities !== undefined && capabilities.indexOf("primaryController") > -1;
+        const hop = isPrimaryController ? 0 : neighbors === undefined ? 1 : -1;
 
         networkItems.push({
             id: node_id,
             label: `[${node_id}] ${name}`,
-            hop: attributes.hop,
+            hop: hop,
             neighbors: neighbors,
+            isPrimaryController: isPrimaryController,
             color: currentHop.background,
             font: {
                 color: currentHop.fontColor
@@ -438,10 +449,13 @@ const getEdges = () => {
         const fromItem = getItem(e.from);
         const toItem = getItem(e.to);
 
-        if (fromItem.hop > -1 && fromItem.hop < toItem.hop) {
+        if (fromItem !== undefined &&
+            toItem !== undefined &&
+            fromItem.hop > -1 &&
+            fromItem.hop < toItem.hop) {
+
             filteredEdges.push(e);
         }
-
     });
 
     return filteredEdges;
