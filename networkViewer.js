@@ -222,11 +222,11 @@ const loadNetworkItems = (entities) => {
         const node_id = attributes.node_id;
         const neighbors = attributes.neighbors;
         const name = attributes.friendly_name;
-        const currentHop = HOPS[hop];
         const capabilities = attributes.capabilities;
 
         const isPrimaryController = capabilities !== undefined && capabilities.indexOf("primaryController") > -1;
         const hop = isPrimaryController ? 0 : neighbors === undefined ? 1 : -1;
+        const currentHop = HOPS[hop];
 
         networkItems.push({
             id: node_id,
@@ -293,6 +293,7 @@ const loadHopsLegend = () => {
     const container = document.getElementById("hops-legend");
 
     const hopLegendTitle = document.createElement("div");
+    hopLegendTitle.innerText = "Legend";
     hopLegendTitle.className = "sidebar-section-title";
     container.appendChild(hopLegendTitle);
 
@@ -344,7 +345,7 @@ const loadNetworkView = (networkEdges) => {
 const setNeighbors = (selectedItem) => {
     const neighbors = selectedItem.neighbors;
     const divNeighbors = document.createElement("div");
-    const hasNeighbors = neighbors !== undefined;
+    const hasNeighbors = neighbors !== undefined && neighbors.length > 0;
 
     const orderedNeighbors = {};
 
@@ -389,9 +390,8 @@ const setNeighbors = (selectedItem) => {
 
     element.appendChild(divNeighbors);
 
-    if(!hasNeighbors) {
-        element.style.display = "none";
-    }
+    const neighborSection = document.getElementById('node-neighbors');
+    neighborSection.style.display = hasNeighbors ? "block" : "none";
 };
 
 const setDetailsItem = (container, title, content, breakAfter) => {
