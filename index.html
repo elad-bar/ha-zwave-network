@@ -3,6 +3,7 @@
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.js"></script>
     <script type="text/javascript" src="networkViewer.js"></script>
 
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.11.1/css/all.css" rel="stylesheet" type="text/css"/>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis-network.min.css" rel="stylesheet" type="text/css" />
     <link href="styles.css" rel="stylesheet" type="text/css" />
     <title>Z-Wave Network Viewer</title>
@@ -13,7 +14,10 @@
 <div class="wrapper">
 
     <header class="header">
-        <div class="header-text">Z-Wave Network Viewer</div>
+        <div class="header-content">
+            <div class="header-text">Z-Wave Network Viewer</div>
+            <div class="header-debug"><img src="images/json.png" class="debug-button" onclick="javascript:window.open('/nodes.json')" /></div>
+        </div>
     </header><!-- .header-->
 
     <div class="middle">
@@ -37,24 +41,22 @@
                 </div>
 
                 <div class="sidebar-section" id="hops-legend"></div>
+
             </div>
         </aside><!-- .right-sidebar -->
     </div><!-- .middle-->
 </div><!-- .wrapper -->
 
 <script type="text/javascript">
-    fetch("/states.json")
+    fetch("/nodes.json")
     .then(response => {
         if (!response.ok) throw new Error(response.status);
         return response.json();
-    }).then( json => {
-        //Filter ZWave devices
-        return json.filter(e => e.entity_id.startsWith("zwave."));
-    }).then(entities => {
+    }).then(nodes => {
         //Set hop
-        initialize(entities);
+        initialize(nodes);
 
-        return entities;
+        return nodes;
     }).catch(e => console.log(e));
 
 </script>

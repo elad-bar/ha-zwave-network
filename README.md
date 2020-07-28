@@ -44,3 +44,22 @@ services:
 To enable SSL support (HTTPS), 
 fill in the environment variables `SSL_KEY` and `SSL_CERTIFICATE`,
 Use the volume to share the SSL key and certificate with the container.  
+
+## Web Server
+#### GET / or /index.html
+Presents the web page of Z-Wave network viewer
+
+#### GET /states.json
+Retrieves full states JSON from Home-Assistant
+
+#### GET /zwave.json
+Retrieves Z-Wave domain's states JSON from Home-Assistant
+
+#### GET /nodes.json
+Retrieves network viewer formatted nodes as JSON for debug 
+
+## Troubleshooting
+Before posting issue, please collect as much information as you can for faster resolving,
+Use browser console to identify the error,
+Use the JSON button at the right upper corner to open the debug node's JSON in new window,
+post that JSON as part of the reported issue for faster debugging.   

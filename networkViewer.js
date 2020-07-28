@@ -1,33 +1,39 @@
 
 //Variables
-const HOPS = {
+let HOPS = {
     0: {
         background: "#577590",
         fontColor: "white",
         title: "Hub",
-        classSuffix: "hub"
+        classSuffix: "hub",
+        image: "images/hub.png"
     },
     1: {
         background: "#43aa8b",
-        fontColor: "black"
+        fontColor: "black",
+        image: "images/node.png"
     },
     2: {
         background: "#90be6d",
-        fontColor: "black"
+        fontColor: "black",
+        image: "images/node.png"
     },
     3: {
         background: "#f9c74f",
-        fontColor: "black"
+        fontColor: "black",
+        image: "images/node.png"
     },
     4: {
         background: "#f8961e",
-        fontColor: "black"
+        fontColor: "black",
+        image: "images/node.png"
     },
     "-1": {
         background: "#f94144",
         fontColor: "white",
         title: "Not connected",
-        classSuffix: "not-connected"
+        classSuffix: "not-connected",
+        image: "images/alert.png"
     }
 };
 
@@ -93,13 +99,19 @@ const CAPABILITY_INFO = {
     }
 };
 
-
 const options = {
     edges: {
         smooth: true
     },
     nodes: {
-        shape: 'box',
+        shape: 'circularImage',
+        size: 32,
+        shapeProperties: {
+            useImageSize: true,
+            useBorderWithImage: false,
+            interpolation: false,
+            coordinateOrigin: 'center'
+        },
         widthConstraint: {
             maximum: 60
         },
@@ -108,7 +120,8 @@ const options = {
         hierarchical: {
             direction: "UD",
             nodeSpacing: 100,
-            treeSpacing: 190,
+            treeSpacing: 100,
+            levelSeparation: 190,
             sortMethod: "directed"
         }
     },
@@ -139,7 +152,7 @@ const checkCapability = (capabilities, attributes, key) => {
 };
 
 const getCapabilities = (selectedItem) => {
-    const attributes = selectedItem.data.attributes;
+    const attributes = selectedItem.entity.attributes;
 
     let capabilities = attributes.capabilities;
 
@@ -161,131 +174,34 @@ const getCapabilities = (selectedItem) => {
     return capabilities;
 };
 
-const getFirstHub = () => {
-    return networkItems.filter(n => n.isPrimaryController)[0]
-};
-
-const getDefaultEdge = (node_id) => {
-    const hub = getFirstHub();
-
-    return hub === undefined ?
-        [] :
-        [{
-            from: node_id,
-            to: hub.id,
-            width: 1,
-            dashes: true
-        }];
-};
-
-const getEntityEdges = (node_id, neighbors) => {
-    return neighbors === undefined ?
-        getDefaultEdge() :
-        neighbors.map(n => {
-            return {
-                from: node_id,
-                to: n,
-                width: 1,
-                dashes: true
-            };
-        });
-};
-
 const getItem = (node_id) => {
     return networkItems.filter(e => e.id === node_id)[0];
 };
 
-const setItemHop = (currentItem) => {
-    const currentHop = currentItem.hop;
+const updateNodeData = (node) => {
+    const hop = node.hop;
+    const currentHopSettings = HOPS[hop];
 
-    if (currentItem.edges !== undefined) {
-        currentItem.edges
-                   .map(n => getItem(n.to))
-                   .filter(n => n !== undefined)
-                   .filter(n => n.hop === -1 || n.hop > currentHop + 1)
-                   .forEach(n => {
-                n.hop = currentHop + 1;
+    node["label"] = `[${node.id}] ${node.name}`;
 
-                setItemHop(n);
-            });
+    node["image"] = currentHopSettings.image;
+
+    node["color"] = currentHopSettings.background;
+    node["font"] = {
+        color: "white"
+    };
+
+    node["chosen"] = {
+        label: true,
+        node: changeChosenNodeColor
     }
+
 };
 
-const setItemsHop = () => {
-    networkItems.filter(i => i.hop > -1)
-        .forEach(i => setItemHop(i));
-};
-
-const loadNetworkItems = (entities) => {
-    entities.forEach(entity => {
-        const attributes = entity.attributes;
-        const node_id = attributes.node_id;
-        const neighbors = attributes.neighbors;
-        const name = attributes.friendly_name;
-        const capabilities = attributes.capabilities;
-
-        const isPrimaryController = capabilities !== undefined && capabilities.indexOf("primaryController") > -1;
-        const hop = isPrimaryController ? 0 : neighbors === undefined ? 1 : -1;
-        const currentHop = HOPS[hop];
-
-        networkItems.push({
-            id: node_id,
-            label: `[${node_id}] ${name}`,
-            hop: hop,
-            neighbors: neighbors,
-            isPrimaryController: isPrimaryController,
-            color: currentHop.background,
-            font: {
-                color: currentHop.fontColor
-            },
-            edges: getEntityEdges(node_id, neighbors),
-            data: entity
-        });
-    });
-
-    setItemsHop();
-};
-
-const getEdges = () => {
-    const allEdges = [];
-    const filteredEdges = [];
-    let highestHop = -1;
-
-    networkItems.forEach(i => {
-        if (i.hop > highestHop) {
-            highestHop = i.hop + 1;
-        }
-
-        i.edges.forEach(e => allEdges.push(e));
-    });
-
-    allEdges.forEach(e => {
-        const fromItem = getItem(e.from);
-        const toItem = getItem(e.to);
-
-        if (fromItem !== undefined &&
-            toItem !== undefined &&
-            fromItem.hop > -1 &&
-            fromItem.hop < toItem.hop) {
-
-            filteredEdges.push(e);
-        }
-    });
-
-    return filteredEdges;
-};
-
-const fixItemData = () => {
-    networkItems.forEach(i => {
-        let currentHop = HOPS[i.hop];
-
-        if(currentHop === undefined) {
-            currentHop = HOPS["-1"];
-        }
-
-        i.color = currentHop.background;
-        i.font.color = currentHop.fontColor;
-    });
+const changeChosenNodeColor = (values, id, selected, hovering) => {
+    if (selected) {
+        values.color = "#00a8e8";
+    }
 };
 
 // UI
@@ -308,6 +224,7 @@ const loadHopsLegend = () => {
         hopContent.className = "sidebar-section-content";
 
         const hopContentBox = document.createElement("div");
+        hopContentBox.innerHTML = "&nbsp;";
         hopContentBox.className = `legend-box legend-box-${currentHopClassSuffix}`;
         hopContent.appendChild(hopContentBox);
 
@@ -320,7 +237,22 @@ const loadHopsLegend = () => {
     });
 };
 
-const loadNetworkView = (networkEdges) => {
+const loadNetworkView = () => {
+    const networkEdges = [];
+
+    networkItems.forEach(n => {
+       n.edges.forEach(e => {
+           if(e.type === "parent") {
+               networkEdges.push({
+                   from: e.id,
+                   to: e.toNodeId,
+                   width: 1,
+                   dashes: true
+               });
+           }
+       });
+    });
+
     // create an array with nodes
     const nodes = new vis.DataSet(networkItems);
 
@@ -334,6 +266,7 @@ const loadNetworkView = (networkEdges) => {
 
     const container = document.getElementById("network");
 
+    // create a network
     networkView = new vis.Network(container, data, options);
 
     networkView.on("click", onSelect);
@@ -345,7 +278,7 @@ const loadNetworkView = (networkEdges) => {
 const setNeighbors = (selectedItem) => {
     const neighbors = selectedItem.neighbors;
     const divNeighbors = document.createElement("div");
-    const hasNeighbors = neighbors !== undefined && neighbors.length > 0;
+    const hasNeighbors = neighbors !== undefined && neighbors !== null && neighbors.length > 0;
 
     const orderedNeighbors = {};
 
@@ -420,15 +353,15 @@ const setDetails = (selectedItem) => {
     nodeName.innerText = selectedItem.label;
 
     const attr_keys = Object.keys(ATTRIBUTES_MAPPING);
-    const attributes = selectedItem.data.attributes;
+    const attributes = selectedItem.entity.attributes;
     const availableAttributes = {};
 
     attr_keys.forEach(ak => {
         availableAttributes[ak] = attributes[ak];
     });
 
-    availableAttributes["entity_id"] = selectedItem.data.entity_id;
-    availableAttributes["state"] = selectedItem.data.state;
+    availableAttributes["entity_id"] = selectedItem.entity.entity_id;
+    availableAttributes["state"] = selectedItem.entity.state;
 
     const nodeDetailsContent = document.getElementById('node-details-content');
     while (nodeDetailsContent.firstChild) {
@@ -517,12 +450,13 @@ const neighborClicked = (e) => {
 };
 
 // Initialize
-const initialize = (entities) => {
-    loadNetworkItems(entities);
-    const edges = getEdges();
+const initialize = (nodes) => {
+    nodes.forEach(n => {
+        updateNodeData(n);
 
-    fixItemData();
+        networkItems.push(n);
+    });
 
     loadHopsLegend();
-    loadNetworkView(edges);
+    loadNetworkView();
 };

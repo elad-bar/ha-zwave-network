@@ -60,6 +60,7 @@ article, aside, details, figcaption, figure, footer, header, hgroup, main, nav, 
 body {
     font: 12px/18px Arial, sans-serif;
     height: 100%;
+    background: #00171f;
 }
 
 .wrapper {
@@ -82,8 +83,24 @@ body {
     font-size: 20pt;
 }
 
+.header-content {
+}
+
 .header-text {
-    padding: 15px
+    display: inline-block;
+    padding: 15px;
+}
+
+.header-debug {
+    display: inline-block;
+    float: right;
+    cursor: hand;
+}
+
+.debug-button {
+    padding: 4px;
+    width: 32px;
+    height: 32px;
 }
 
 
@@ -102,7 +119,6 @@ body {
     width: 100%;
     float: left;
     overflow: hidden;
-    background: #00171f;
 }
 .content {
     padding: 0 290px 0 0;
@@ -142,14 +158,15 @@ body {
 
 .sidebar-section {
     margin-top: 5px;
-    background: white;
+    background: #efefef;
     border-radius: 5px;
+    border: 1px #00a8e8 solid;
 }
 
 .sidebar-section-title {
     padding: 5px;
     border-radius: 5px 5px 0 0;
-    background: #fe5f55;
+    background: #00a8e8;
     color: white;
     font-size: 12pt;
 }
