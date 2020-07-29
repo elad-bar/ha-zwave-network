@@ -313,6 +313,15 @@ const setNeighbors = (selectedItem) => {
     const hasNeighbors = neighbors !== undefined && neighbors !== null && neighbors.length > 0;
 
     const orderedNeighbors = {};
+    const hopKeys = Object.keys(HOPS).sort();
+
+    hopKeys.forEach(hk => {
+        const currentHop = HOPS[hk];
+        const currentHopClassSuffix = currentHop.classSuffix === undefined ? `hop-${hk}` : currentHop.classSuffix;
+        const divNeighbors = document.getElementById(`neighbors-${currentHopClassSuffix}`);
+        clearChildren(divNeighbors);
+    });
+
 
     if (hasNeighbors) {
         neighbors.map(n => networkItems.filter(i => i.id === n)[0])
@@ -327,16 +336,16 @@ const setNeighbors = (selectedItem) => {
                 hopNeighbors.push(i);
             });
 
-        const hopKeys = Object.keys(HOPS).sort();
+
 
         hopKeys.forEach(hk => {
             const items = orderedNeighbors[hk];
-            const currentHop = HOPS[hk];
-            const currentHopClassSuffix = currentHop.classSuffix === undefined ? `hop-${hk}` : currentHop.classSuffix;
-            const divNeighbors = document.getElementById(`neighbors-${currentHopClassSuffix}`);
-            clearChildren(divNeighbors);
 
             if(items !== undefined) {
+                const currentHop = HOPS[hk];
+                const currentHopClassSuffix = currentHop.classSuffix === undefined ? `hop-${hk}` : currentHop.classSuffix;
+                const divNeighbors = document.getElementById(`neighbors-${currentHopClassSuffix}`);
+
                 items.forEach(n => {
                     const divNeighbor = document.createElement("div");
                     divNeighbor.className = "node-neighbor-item";
