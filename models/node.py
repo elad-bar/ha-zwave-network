@@ -21,16 +21,9 @@ class Node:
 
         is_primary = "primaryController" in capabilities
 
-        hop = -1
-
-        if is_primary:
-            hop = 0
-        elif neighbors is None:
-            hop = 1
-
         self.id = node_id
         self.name = name
-        self.hop = hop
+        self.hop = 0 if is_primary else -1
         self.neighbors = neighbors
         self.isPrimary = is_primary
         self.entity = entity

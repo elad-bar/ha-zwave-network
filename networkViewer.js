@@ -1,5 +1,7 @@
 
 //Variables
+const REFRESH_INTERVAL = 5 * 1000;
+
 let HOPS = {
     0: {
         background: "#577590",
@@ -11,27 +13,27 @@ let HOPS = {
     1: {
         background: "#43aa8b",
         fontColor: "black",
-        image: "images/node.png"
+        image: "images/node-online.png"
     },
     2: {
         background: "#90be6d",
         fontColor: "black",
-        image: "images/node.png"
+        image: "images/node-online.png"
     },
     3: {
         background: "#f9c74f",
         fontColor: "black",
-        image: "images/node.png"
+        image: "images/node-online.png"
     },
     4: {
         background: "#f8961e",
         fontColor: "black",
-        image: "images/node.png"
+        image: "images/node-online.png"
     },
     "-1": {
         background: "#f94144",
         fontColor: "white",
-        title: "Not connected",
+        title: "Failed / Not connected",
         classSuffix: "not-connected",
         image: "images/alert.png"
     }
@@ -57,6 +59,10 @@ const ATTRIBUTES_MAPPING = {
     "query_stage": {
         title: "Query stage",
         breakAfter: false
+    },
+    "lastResponseRTT": {
+      title: "Response time (MSec)",
+      breakAfter: false
     },
     "battery_level": {
         title: "Battery level",
@@ -109,8 +115,7 @@ const options = {
         shapeProperties: {
             useImageSize: true,
             useBorderWithImage: false,
-            interpolation: false,
-            coordinateOrigin: 'center'
+            interpolation: false
         },
         widthConstraint: {
             maximum: 60
@@ -140,7 +145,7 @@ const options = {
 
 
 // Build graph
-const networkItems = [];
+let  networkItems = [];
 let networkView = null;
 
 const checkCapability = (capabilities, attributes, key) => {
@@ -180,7 +185,21 @@ const getItem = (node_id) => {
 
 const updateNodeData = (node) => {
     const hop = node.hop;
-    const currentHopSettings = HOPS[hop];
+    let currentHopSettings = HOPS[hop];
+
+    if (currentHopSettings === undefined){
+        currentHopSettings = HOPS["-1"]
+    }
+
+    if(node.entity.attributes.is_failed) {
+        currentHopSettings = {
+            background: "#f94144",
+            fontColor: "white",
+            title: "Failed",
+            classSuffix: "not-connected",
+            image: "images/node-offline.png"
+        }
+    }
 
     node["label"] = `[${node.id}] ${node.name}`;
 
@@ -207,9 +226,12 @@ const changeChosenNodeColor = (values, id, selected, hovering) => {
 // UI
 const loadHopsLegend = () => {
     const container = document.getElementById("hops-legend");
+    while (container.firstChild) {
+        container.removeChild(container.lastChild);
+    }
 
     const hopLegendTitle = document.createElement("div");
-    hopLegendTitle.innerText = "Legend";
+    hopLegendTitle.innerText = "Neighbors";
     hopLegendTitle.className = "sidebar-section-title";
     container.appendChild(hopLegendTitle);
 
@@ -233,6 +255,10 @@ const loadHopsLegend = () => {
         hopContentText.innerText = text;
         hopContent.appendChild(hopContentText);
 
+        const hopContentNeighbors = document.createElement("div");
+        hopContentNeighbors.id = `neighbors-${currentHopClassSuffix}`;
+        hopContent.appendChild(hopContentNeighbors);
+
         container.appendChild(hopContent);
     });
 };
@@ -240,15 +266,21 @@ const loadHopsLegend = () => {
 const loadNetworkView = () => {
     const networkEdges = [];
 
-    networkItems.forEach(n => {
+    networkItems.filter(n => !n.entity.attributes.is_failed)
+                .forEach(n => {
        n.edges.forEach(e => {
            if(e.type === "parent") {
-               networkEdges.push({
-                   from: e.id,
-                   to: e.toNodeId,
-                   width: 1,
-                   dashes: true
-               });
+               const toNode = getItem(e.toNodeId);
+
+               if (!toNode.entity.attributes.is_failed) {
+
+                   networkEdges.push({
+                       from: e.id,
+                       to: e.toNodeId,
+                       width: 1,
+                       dashes: true
+                   });
+               }
            }
        });
     });
@@ -277,7 +309,7 @@ const loadNetworkView = () => {
 
 const setNeighbors = (selectedItem) => {
     const neighbors = selectedItem.neighbors;
-    const divNeighbors = document.createElement("div");
+
     const hasNeighbors = neighbors !== undefined && neighbors !== null && neighbors.length > 0;
 
     const orderedNeighbors = {};
@@ -299,6 +331,10 @@ const setNeighbors = (selectedItem) => {
 
         hopKeys.forEach(hk => {
             const items = orderedNeighbors[hk];
+            const currentHop = HOPS[hk];
+            const currentHopClassSuffix = currentHop.classSuffix === undefined ? `hop-${hk}` : currentHop.classSuffix;
+            const divNeighbors = document.getElementById(`neighbors-${currentHopClassSuffix}`);
+            clearChildren(divNeighbors);
 
             if(items !== undefined) {
                 items.forEach(n => {
@@ -315,16 +351,6 @@ const setNeighbors = (selectedItem) => {
             }
         });
     }
-
-    const element = document.getElementById('node-neighbors-content');
-    while (element.firstChild) {
-        element.removeChild(element.lastChild);
-    }
-
-    element.appendChild(divNeighbors);
-
-    const neighborSection = document.getElementById('node-neighbors');
-    neighborSection.style.display = hasNeighbors ? "block" : "none";
 };
 
 const setDetailsItem = (container, title, content, breakAfter) => {
@@ -348,6 +374,12 @@ const setDetailsItem = (container, title, content, breakAfter) => {
     container.appendChild(div);
 };
 
+const clearChildren = (element) => {
+    while (element.firstChild) {
+        element.removeChild(element.lastChild);
+    }
+}
+
 const setDetails = (selectedItem) => {
     const nodeName = document.getElementById('node-details-title');
     nodeName.innerText = selectedItem.label;
@@ -364,9 +396,7 @@ const setDetails = (selectedItem) => {
     availableAttributes["state"] = selectedItem.entity.state;
 
     const nodeDetailsContent = document.getElementById('node-details-content');
-    while (nodeDetailsContent.firstChild) {
-        nodeDetailsContent.removeChild(nodeDetailsContent.lastChild);
-    }
+    clearChildren(nodeDetailsContent);
 
     const div = document.createElement("div");
     div.className = "";
@@ -451,12 +481,39 @@ const neighborClicked = (e) => {
 
 // Initialize
 const initialize = (nodes) => {
+    networkItems = [];
+    console.log(nodes);
+
     nodes.forEach(n => {
         updateNodeData(n);
 
         networkItems.push(n);
     });
 
+    if(nodes.length > 0) {
+        loadNetworkView();
+    }
+};
+
+const onLoad = () => {
     loadHopsLegend();
-    loadNetworkView();
+
+    refresh();
+}
+
+const onDebug = () => {
+    window.open('/nodes.json')
+}
+
+const refresh = () => {
+    fetch("nodes.json")
+        .then(response => {
+            if (!response.ok) throw new Error(response.status);
+            return response.json();
+        }).then(nodes => {
+        //Set hop
+        initialize(nodes);
+
+        return nodes;
+    }).catch(e => console.log(e));
 };

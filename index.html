@@ -8,59 +8,36 @@
     <link href="styles.css" rel="stylesheet" type="text/css" />
     <title>Z-Wave Network Viewer</title>
 </head>
-<body>
+<body onload="onLoad()">
+    <div class="wrapper">
 
-
-<div class="wrapper">
-
-    <header class="header">
-        <div class="header-content">
-            <div class="header-text">Z-Wave Network Viewer</div>
-            <div class="header-debug"><img src="images/json.png" class="debug-button" onclick="javascript:window.open('/nodes.json')" /></div>
-        </div>
-    </header><!-- .header-->
-
-    <div class="middle">
-
-        <div class="container">
-            <main class="content">
-                <div id="network" class="content-network"></div>
-            </main><!-- .content -->
-        </div><!-- .container-->
-
-        <aside class="right-sidebar" id="sidebar">
-            <div id="node-data" class="node-data">
-                <div class="sidebar-section" id="node-details">
-                    <div class="sidebar-section-title" id="node-details-title"></div>
-                    <div class="sidebar-section-content" id="node-details-content"></div>
-                </div>
-
-                <div class="sidebar-section" id="node-neighbors">
-                    <div class="sidebar-section-title" id="node-neighbors-title">Neighbors</div>
-                    <div class="sidebar-section-content" id="node-neighbors-content"></div>
-                </div>
-
-                <div class="sidebar-section" id="hops-legend"></div>
-
+        <header class="header">
+            <div class="header-content">
+                <div class="header-text">Z-Wave Network Viewer</div>
+                <div class="header-debug"><img src="images/json.png" class="debug-button" onclick="onDebug()" /></div>
             </div>
-        </aside><!-- .right-sidebar -->
-    </div><!-- .middle-->
-</div><!-- .wrapper -->
+        </header><!-- .header-->
 
-<script type="text/javascript">
-    fetch("/nodes.json")
-    .then(response => {
-        if (!response.ok) throw new Error(response.status);
-        return response.json();
-    }).then(nodes => {
-        //Set hop
-        initialize(nodes);
+        <div class="middle">
 
-        return nodes;
-    }).catch(e => console.log(e));
+            <div class="container">
+                <main class="content">
+                    <div id="network" class="content-network"></div>
+                </main><!-- .content -->
+            </div><!-- .container-->
 
-</script>
+            <aside class="right-sidebar" id="sidebar">
+                <div id="node-data" class="node-data">
+                    <div class="sidebar-section" id="node-details">
+                        <div class="sidebar-section-title" id="node-details-title"></div>
+                        <div class="sidebar-section-content" id="node-details-content"></div>
+                    </div>
 
+                    <div class="sidebar-section" id="hops-legend"></div>
 
+                </div>
+            </aside><!-- .right-sidebar -->
+        </div><!-- .middle-->
+    </div><!-- .wrapper -->
 </body>
 </html>

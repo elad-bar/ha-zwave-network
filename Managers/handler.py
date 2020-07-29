@@ -16,7 +16,15 @@ class ZWaveNetworkHandler(SimpleHTTPRequestHandler):
 
         current_path = self.path
 
-        if current_path in SUPPORTED_CUSTOM_ENDPOINTS:
+        if "/external/" in current_path:
+            response = manager.get_external_nodes_json(current_path)
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+
+            self.wfile.write(str(json.dumps(response, indent=4)).encode("utf-8"))
+
+        elif current_path in SUPPORTED_CUSTOM_ENDPOINTS:
             response = None
 
             if current_path == STATES_ENDPOINT:

@@ -215,9 +215,12 @@ body {
 }
 
 .node-neighbor-item {
-    padding: 3px;
+    padding: 1px;
     cursor: hand;
-    width: max-content;
+    max-width: 230px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .node-neighbor-item:hover {

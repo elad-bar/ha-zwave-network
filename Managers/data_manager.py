@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import requests
@@ -80,7 +81,7 @@ class HAZWaveManager:
         return items
 
     @staticmethod
-    def get_hub(nodes: List[Node]) -> Optional[Node]:
+    def _get_hub(nodes: List[Node]) -> Optional[Node]:
         for node in nodes:
             if node.isPrimary:
                 return node
@@ -95,20 +96,40 @@ class HAZWaveManager:
 
         return None
 
-    def _get_edges(self, node: Node, nodes: List[Node]) -> List[NodeRelation]:
-        edges: List[NodeRelation] = []
-
+    def _update_edges(self, node: Node, nodes: List[Node]):
         neighbors = node.neighbors
 
+        if node.edges is None:
+            node.edges = []
+
         if neighbors is None:
-            hub = self.get_hub(nodes)
+            hub = self._get_hub(nodes)
 
             if hub is not None:
                 relation = NodeRelation()
                 relation.id = node.id
                 relation.toNodeId = hub.id
 
-                edges.append(relation)
+                # print(f"H {relation.id} --> {relation.toNodeId}")
+
+                node.edges.append(relation)
+
+                if hub.edges is None:
+                    hub.edges = []
+
+                should_created_op = True
+                for neighbor_edge in hub.edges:
+                    if neighbor_edge.toNodeId == node.id:
+                        should_created_op = False
+
+                if should_created_op:
+                    op_relation = NodeRelation()
+                    op_relation.id = hub.id
+                    op_relation.toNodeId = node.id
+
+                    # print(f"H> {op_relation.id} --> {op_relation.toNodeId}")
+
+                    hub.edges.append(op_relation)
         else:
             for neighbor_id in neighbors:
                 neighbor = self._get_node(nodes, neighbor_id)
@@ -118,9 +139,26 @@ class HAZWaveManager:
                     relation.id = node.id
                     relation.toNodeId = neighbor.id
 
-                    edges.append(relation)
+                    # print(f"{relation.id} --> {relation.toNodeId}")
 
-        return edges
+                    node.edges.append(relation)
+
+                    if neighbor.edges is None:
+                        neighbor.edges = []
+
+                    should_created_op = True
+                    for neighbor_edge in neighbor.edges:
+                        if neighbor_edge.toNodeId == node.id:
+                            should_created_op = False
+
+                    if should_created_op:
+                        op_relation = NodeRelation()
+                        op_relation.id = neighbor.id
+                        op_relation.toNodeId = node.id
+
+                        # print(f"> {op_relation.id} --> {op_relation.toNodeId}")
+
+                        neighbor.edges.append(op_relation)
 
     def _get_zwave_nodes(self):
         zwave_states = self.get_zwave_states()
@@ -133,52 +171,57 @@ class HAZWaveManager:
 
         return result
 
-    def update_hop(self, node: Node, nodes: List[Node]):
-        current_hop = node.hop
+    def _update_hop(self, hop: int, nodes: List[Node]) -> bool:
+        result = False
+        hop_nodes = []
 
-        for edge in node.edges:
-            to_node = self._get_node(nodes, edge.toNodeId)
+        for node in nodes:
+            if node.hop == hop:
+                hop_nodes.append(node)
 
-            if to_node is not None:
-                to_node_hop = to_node.hop
+                result = True
 
-                if to_node_hop == -1 or to_node_hop > current_hop + 1:
+        for node in hop_nodes:
+            current_hop = node.hop
+            sub_nodes: List[Node] = []
+
+            # print(f"{node.id} >> {node.hop}")
+
+            for edge in node.edges:
+                to_node = self._get_node(nodes, edge.toNodeId)
+
+                # print(f">> {to_node.id} >> {to_node.hop}")
+
+                if to_node is not None and to_node.hop == -1:
                     to_node.hop = current_hop + 1
 
-                    self.update_hop(to_node, nodes)
+                    # print(f">> {to_node.id} >> {to_node.hop}")
 
-    def update_relation_parent(self, node: Node, nodes: List[Node]):
+                    sub_nodes.append(to_node)
+
+        return result
+
+    def _update_relation_type(self, node: Node, nodes: List[Node]):
         for edge in node.edges:
             to_node = self._get_node(nodes, edge.toNodeId)
 
             edge_type = "child"
+
             if node.hop == to_node.hop:
                 edge_type = "sibling"
-            elif node.hop < to_node.hop:
+
+            elif node.hop < to_node.hop and not to_node.isPrimary:
                 edge_type = "parent"
 
             edge.type = edge_type
 
-    def get_zwave_nodes(self):
-        nodes: List[Node] = self._get_zwave_nodes()
-        first_hop_nodes = []
-        for node in nodes:
-            node.edges = self._get_edges(node, nodes)
-
-            if node.hop > -1:
-                first_hop_nodes.append(node)
-
-        for node in first_hop_nodes:
-            if node.hop > -1:
-                self.update_hop(node, nodes)
-
-        for node in nodes:
-            self.update_relation_parent(node, nodes)
-
-        return nodes
+            # print(f"- {edge.id} --> {edge.toNodeId} | {edge.type} |> {node.hop}")
 
     def get_zwave_nodes_json(self):
-        nodes = self.get_zwave_nodes()
+        nodes: List[Node] = self._get_zwave_nodes()
+
+        self._update(nodes)
+
         items = []
 
         for node in nodes:
@@ -186,3 +229,43 @@ class HAZWaveManager:
 
         return items
 
+    def get_external_nodes_json(self, path):
+        with open(path[1:]) as file:
+            content = file.read()
+
+        nodes: List[Node] = []
+        items = []
+
+        if content is not None:
+            data = json.loads(content)
+
+            for item in data:
+                entity = item["entity"]
+
+                node = Node(entity)
+                node.name = f"EXT {node.name}"
+
+                nodes.append(node)
+
+            self._update(nodes)
+
+            for node in nodes:
+                items.append(node.to_dict())
+
+        return items
+
+    def _update(self, nodes: List[Node]):
+        hub = self._get_hub(nodes)
+
+        if hub is None or hub.neighbors is None:
+            return
+
+        for node in nodes:
+            self._update_edges(node, nodes)
+
+        for hop in range(len(nodes)):
+            if not self._update_hop(hop, nodes):
+                break
+
+        for node in nodes:
+            self._update_relation_type(node, nodes)
