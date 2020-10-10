@@ -1,7 +1,8 @@
 # Home Assistant Z-Wave Network Viewer
 
 ## Description
-Presents the nodes available in Z-Wave network
+Z-Wave network graph for Home Assistant, 
+Supports both ZWave and OZW integrations. 
 
 Once docker is up and running, it's accessible in `http://{IP or hostname}:6123`,
 
@@ -48,12 +49,6 @@ Use the volume to share the SSL key and certificate with the container.
 ## Web Server
 #### GET / or /index.html
 Presents the web page of Z-Wave network viewer
-
-#### GET /states.json
-Retrieves full states JSON from Home-Assistant
-
-#### GET /zwave.json
-Retrieves Z-Wave domain's states JSON from Home-Assistant
 
 #### GET /nodes.json
 Retrieves network viewer formatted nodes as JSON for debug 

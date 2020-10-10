@@ -11,14 +11,5 @@ class NodeRelation:
         self.toNodeId = None
         self.type = None
 
-    def to_dict(self):
-        obj = {
-            "id": self.id,
-            "toNodeId": self.toNodeId,
-            "type": self.type
-        }
-
-        return obj
-
     def __repr__(self):
-        return f"{self.to_dict()}"
+        return f"{self.__dict__}"

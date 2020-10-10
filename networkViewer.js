@@ -40,23 +40,15 @@ let HOPS = {
 };
 
 const ATTRIBUTES_MAPPING = {
-    "entity_id": {
-        title: "Entity Id",
-        breakAfter: true
-    },
-    "product_name": {
+    "product": {
         title: "Product name",
         breakAfter: true
     },
-    "manufacturer_name": {
+    "manufacturer": {
         title: "Manufacturer",
         breakAfter: false
     },
-    "state": {
-        title: "State",
-        breakAfter: false
-    },
-    "query_stage": {
+    "queryStage": {
         title: "Query stage",
         breakAfter: false
     },
@@ -64,42 +56,46 @@ const ATTRIBUTES_MAPPING = {
       title: "Response time (MSec)",
       breakAfter: false
     },
-    "battery_level": {
+    "batteryLevel": {
         title: "Battery level",
         breakAfter: false
     },
-    "application_version": {
+    "version": {
         title: "Version",
+        breakAfter: false
+    },
+    "entityCount": {
+        title: "Entities",
         breakAfter: false
     }
 };
 
 const CAPABILITY_INFO = {
-    "primaryController": {
+    "isPrimary": {
         image: "primaryController.png",
         title: "Hub"
     },
-    "zwave_plus": {
+    "isZWavePlus": {
         image: "zwaveplus.png",
         title: "Z-Wave Plus"
     },
-    "beaming": {
+    "isBeaming": {
         image: "beaming.png",
         title: "Beaming"
     },
-    "listening": {
+    "isListening": {
         image: "listening.png",
         title: "Listening"
     },
-    "is_awake": {
+    "isAwake": {
         image: "awake.png",
         title: "Awake"
     },
-    "routing": {
+    "isRouting": {
         image: "routing.png",
         title: "Routing"
     },
-    "is_failed": {
+    "isFailed": {
         image: "failed.png",
         title: "Failed"
     }
@@ -148,32 +144,17 @@ const options = {
 let  networkItems = [];
 let networkView = null;
 
-const checkCapability = (capabilities, attributes, key) => {
-    const capability = attributes[key];
-
-    if(capability !== undefined&& eval(capability) === true) {
-        capabilities.push(key);
-    }
-};
-
 const getCapabilities = (selectedItem) => {
-    const attributes = selectedItem.entity.attributes;
+    const capabilities = [];
 
-    let capabilities = attributes.capabilities;
+    const capabilityKeys = Object.keys(CAPABILITY_INFO);
 
-    if (capabilities === undefined) {
-        capabilities = [];
-    }
+    capabilityKeys.forEach(c => {
+        const capability = selectedItem[c];
 
-    const additionalCapabilities = [
-        "is_awake",
-        "is_failed",
-        "is_ready",
-        "is_zwave_plus"
-    ];
-
-    additionalCapabilities.forEach(c => {
-        checkCapability(capabilities, attributes, c);
+        if(capability !== undefined && eval(capability) === true) {
+            capabilities.push(c);
+        }
     });
 
     return capabilities;
@@ -191,7 +172,7 @@ const updateNodeData = (node) => {
         currentHopSettings = HOPS["-1"]
     }
 
-    if(node.entity.attributes.is_failed) {
+    if(node.isFailed) {
         currentHopSettings = {
             background: "#f94144",
             fontColor: "white",
@@ -266,13 +247,13 @@ const loadHopsLegend = () => {
 const loadNetworkView = () => {
     const networkEdges = [];
 
-    networkItems.filter(n => !n.entity.attributes.is_failed)
+    networkItems.filter(n => !n.isFailed)
                 .forEach(n => {
        n.edges.forEach(e => {
            if(e.type === "parent") {
                const toNode = getItem(e.toNodeId);
 
-               if (!toNode.entity.attributes.is_failed) {
+               if (!toNode.isFailed) {
 
                    networkEdges.push({
                        from: e.id,
@@ -394,15 +375,12 @@ const setDetails = (selectedItem) => {
     nodeName.innerText = selectedItem.label;
 
     const attr_keys = Object.keys(ATTRIBUTES_MAPPING);
-    const attributes = selectedItem.entity.attributes;
+
     const availableAttributes = {};
 
     attr_keys.forEach(ak => {
-        availableAttributes[ak] = attributes[ak];
+        availableAttributes[ak] = selectedItem[ak];
     });
-
-    availableAttributes["entity_id"] = selectedItem.entity.entity_id;
-    availableAttributes["state"] = selectedItem.entity.state;
 
     const nodeDetailsContent = document.getElementById('node-details-content');
     clearChildren(nodeDetailsContent);
@@ -414,7 +392,8 @@ const setDetails = (selectedItem) => {
         const attrDetails = ATTRIBUTES_MAPPING[k];
         const attrValue = availableAttributes[k];
 
-        if (attrValue !== undefined && attrValue !== "Unknown") {
+        if (attrValue !== undefined && attrValue !== null && attrValue != "Unknown" && attrValue.toString().length > 0) {
+
             setDetailsItem(div, attrDetails.title, attrValue, attrDetails.breakAfter);
         }
     });
@@ -496,7 +475,10 @@ const initialize = (nodes) => {
     nodes.forEach(n => {
         updateNodeData(n);
 
-        networkItems.push(n);
+        if(n.device.InstanceID == 1)
+        {
+            networkItems.push(n);
+        }
     });
 
     if(nodes.length > 0) {

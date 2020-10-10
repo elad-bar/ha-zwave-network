@@ -9,4 +9,4 @@ _LOGGER = logging.getLogger(__name__)
 manager = HAZWaveManager()
 
 server = HAZWaveViewerServer()
-server.initialize(manager)
+server.initialize(manager.is_ssl)

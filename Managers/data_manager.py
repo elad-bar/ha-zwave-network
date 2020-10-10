@@ -1,8 +1,6 @@
 import json
 import logging
 import os
-import requests
-import urllib3
 
 from typing import List, Optional
 
@@ -10,25 +8,34 @@ from models.consts import *
 
 from models.node import Node
 from models.node_relation import NodeRelation
-
-urllib3.disable_warnings()
+import asyncio
+import asyncws
 
 _LOGGER = logging.getLogger(__name__)
 
 
 class HAZWaveManager:
     token: str
-    url: str
+    ws_url: str
     ssl_key: Optional[str]
     ssl_certificate: Optional[str]
     is_ssl: bool
     is_ready: bool
+    devices: []
 
     def __init__(self):
-        self.url = os.environ.get('HA_URL')
+        url = os.environ.get('HA_URL')
         self.token = os.environ.get('HA_TOKEN')
         self.ssl_key = os.environ.get('SSL_KEY')
         self.ssl_certificate = os.environ.get('SSL_CERTIFICATE')
+        self.ws_url = url.replace("http", "ws")
+        self.devices = []
+
+        self._ws_messages_sent = 1
+        self._loop = asyncio.get_event_loop()
+        self._verify = False if "wss://" in url else None
+        self._states = None
+        self._domain = DOMAIN_ZWAVE
 
         if self.ssl_key == "":
             self.ssl_key = None
@@ -40,7 +47,7 @@ class HAZWaveManager:
 
         self.is_ready = True
 
-        if self.url is None:
+        if url is None:
             _LOGGER.fatal("Environment variable HA_URL is empty, cannot initialize server")
             self.is_ready = False
             return
@@ -52,33 +59,17 @@ class HAZWaveManager:
 
         _LOGGER.info(f"Initializing server {SERVER_BIND}:{SERVER_PORT}, SSL: {self.is_ssl}")
 
+    def load_data(self):
+        self._loop.run_until_complete(self._async_load_data())
+
     def get_states(self):
         try:
-            headers = {
-                'Authorization': 'Bearer ' + self.token
-            }
-
-            verify = False if "https://" in self.url else None
-
-            response = requests.get(f"{self.url}/api/states", headers=headers, verify=verify)
-
-            return response.json()
+            return self._states
 
         except Exception as ex:
             _LOGGER.error(f"Failed to retrieve states from HA, error: {ex}")
 
             return None
-
-    def get_zwave_states(self):
-        states = self.get_states()
-        items = []
-        for state in states:
-            entity_id = state.get("entity_id", "")
-
-            if "zwave." in entity_id:
-                items.append(state)
-
-        return items
 
     @staticmethod
     def _get_hub(nodes: List[Node]) -> Optional[Node]:
@@ -160,12 +151,11 @@ class HAZWaveManager:
 
                         neighbor.edges.append(op_relation)
 
-    def _get_zwave_nodes(self):
-        zwave_states = self.get_zwave_states()
+    def _get_nodes(self):
         result: List[Node] = []
 
-        for entity in zwave_states:
-            node = Node(entity)
+        for device in self.devices:
+            node = Node(device)
 
             result.append(node)
 
@@ -217,15 +207,15 @@ class HAZWaveManager:
 
             # print(f"- {edge.id} --> {edge.toNodeId} | {edge.type} |> {node.hop}")
 
-    def get_zwave_nodes_json(self):
-        nodes: List[Node] = self._get_zwave_nodes()
+    def get_nodes(self):
+        nodes: List[Node] = self._get_nodes()
 
         self._update(nodes)
 
         items = []
 
         for node in nodes:
-            items.append(node.to_dict())
+            items.append(node.__dict__)
 
         return items
 
@@ -269,3 +259,184 @@ class HAZWaveManager:
 
         for node in nodes:
             self._update_relation_type(node, nodes)
+
+    @staticmethod
+    def get_ws_requests():
+        requests = {
+            1: "config/device_registry/list",
+            2: "config/entity_registry/list",
+            3: "get_states"
+        }
+
+        return requests
+
+    async def _async_load_data(self):
+        """Simple WebSocket client for Home Assistant."""
+        ws = await asyncws.connect(f'{self.ws_url}/api/websocket', ssl=True)
+
+        login_data = {
+            'type': 'auth',
+             'access_token': self.token
+        }
+
+        await ws.send(json.dumps(login_data))
+
+        requests = self.get_ws_requests()
+        messages = []
+
+        for request_key in requests:
+            messages.append(request_key)
+
+            data = {
+                "id": request_key,
+                "type": requests.get(request_key)
+            }
+
+            await ws.send(json.dumps(data))
+
+        entities = []
+        states = []
+        devices = []
+
+        while len(messages) > 0:
+            message = await ws.recv()
+            if message is None:
+                break
+
+            message_json = json.loads(message)
+
+            if "id" in message_json:
+                message_id = message_json.get("id", 0)
+                result = message_json.get("result")
+
+                if message_id == 1:
+                    devices = result
+                elif message_id == 2:
+                    entities = result
+                elif message_id == 3:
+                    states = result
+
+                messages.remove(message_id)
+
+        self.load_devices(devices, entities, states)
+
+        if self._domain == DOMAIN_OZW:
+            for device in self.devices:
+                new_message_id = await self.load_ozw_device(ws, device)
+
+                if new_message_id is not None:
+                    messages.append(new_message_id)
+
+            while len(messages) > 0:
+                message = await ws.recv()
+                if message is None:
+                    break
+
+                message_json = json.loads(message)
+
+                if "id" in message_json:
+                    message_id = message_json.get("id", 0)
+                    result = message_json.get("result")
+
+                    if message_id > 0:
+                        for device in self.devices:
+                            device_controller_id = device.get("ControllerID")
+                            device_node_id = device.get("NodeID")
+                            device_instance_id = device.get("InstanceID")
+
+                            device_key = self.get_message_id(device_controller_id, device_node_id, device_instance_id)
+
+                            if message_id == device_key:
+                                device["OZWStatus"] = result
+
+                    messages.remove(message_id)
+
+        await ws.close()
+
+    @staticmethod
+    def get_message_id(controller_id, node_id, instance_id):
+        return (controller_id * 1000) + (node_id * 100) + (instance_id * 10)
+
+    def load_devices(self, devices, entities, states):
+        filtered_devices = []
+
+        for device in devices:
+            identifier = device.get("identifiers")[0]
+            domain = identifier[0]
+
+            if domain == DOMAIN_OZW:
+                self._domain = DOMAIN_OZW
+
+                break
+
+        for device in devices:
+            device_id = device.get("id")
+            identifier = device.get("identifiers")[0]
+            domain = identifier[0]
+            external_id = identifier[1]
+
+            device["Domain"] = domain
+
+            if domain == self._domain:
+                controller_id = 1
+                node_id = external_id
+                instance_id = 1
+
+                if domain == DOMAIN_ZWAVE:
+                    if len(identifier) > 2:
+                        instance_id = identifier[2]
+
+                elif domain == DOMAIN_OZW:
+                    external_id_parts = external_id.split(".")
+                    controller_id = int(external_id_parts[0])
+                    node_id = int(external_id_parts[1])
+                    instance_id = int(external_id_parts[2])
+
+                device["ControllerID"] = controller_id
+                device["NodeID"] = node_id
+                device["InstanceID"] = instance_id
+
+                for entity in entities:
+                    entity_device_id = entity.get("device_id")
+
+                    if device_id == entity_device_id:
+                        entity_id = entity.get("entity_id")
+
+                        for state in states:
+                            state_entity_id = state.get("entity_id")
+
+                            if state_entity_id == entity_id:
+                                entity["State"] = state
+
+                                if f"{DOMAIN_ZWAVE}." in state_entity_id:
+                                    device["ZWaveStatus"] = state
+
+                        if "Entities" not in device:
+                            device["Entities"] = []
+
+                        device["Entities"].append(entity)
+
+                filtered_devices.append(device)
+
+        self.devices = filtered_devices
+
+    async def load_ozw_device(self, ws, device) -> Optional[int]:
+        message_id = None
+
+        controller_id = device.get("ControllerID")
+        node_id = device.get("NodeID")
+        instance_id = device.get("InstanceID")
+
+        if instance_id == 1:
+            message_id = self.get_message_id(controller_id, node_id, instance_id)
+
+            device_status = {
+                "id": message_id,
+                "type": "ozw/node_status",
+                "ozw_instance": instance_id,
+                "node_id": node_id
+            }
+
+            await ws.send(json.dumps(device_status))
+
+        return message_id

@@ -10,7 +10,8 @@ ENV SSL_CERTIFICATE ""
 RUN apk update && \
     apk upgrade && \
     apk add nano && \
-    pip install requests
+    pip install requests && \
+    pip install asyncws
 
 EXPOSE 6123
 

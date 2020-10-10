@@ -5,7 +5,6 @@ from http.server import HTTPServer
 from typing import Optional
 
 from .handler import ZWaveNetworkHandler
-from .data_manager import HAZWaveManager
 from models.consts import *
 
 _LOGGER = logging.getLogger(__name__)
@@ -17,10 +16,10 @@ class HAZWaveViewerServer:
     def __init__(self):
         self.httpd = None
 
-    def initialize(self, manager: HAZWaveManager):
+    def initialize(self, is_ssl: bool):
         self.httpd = HTTPServer((SERVER_BIND, SERVER_PORT), ZWaveNetworkHandler)
 
-        if manager.is_ssl:
+        if is_ssl:
             self.httpd.socket = ssl.wrap_socket(self.httpd.socket,
                                                 keyfile=manager.ssl_key,
                                                 certfile=manager.ssl_certificate,
