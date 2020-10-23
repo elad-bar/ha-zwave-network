@@ -8,34 +8,34 @@ let HOPS = {
         fontColor: "white",
         title: "Hub",
         classSuffix: "hub",
-        image: "images/hub.png"
+        image: "static/images/hub.png"
     },
     1: {
         background: "#43aa8b",
         fontColor: "black",
-        image: "images/node-online.png"
+        image: "static/images/node-online.png"
     },
     2: {
         background: "#90be6d",
         fontColor: "black",
-        image: "images/node-online.png"
+        image: "static/images/node-online.png"
     },
     3: {
         background: "#f9c74f",
         fontColor: "black",
-        image: "images/node-online.png"
+        image: "static/images/node-online.png"
     },
     4: {
         background: "#f8961e",
         fontColor: "black",
-        image: "images/node-online.png"
+        image: "static/images/node-online.png"
     },
     "-1": {
         background: "#f94144",
         fontColor: "white",
         title: "Failed / Not connected",
         classSuffix: "not-connected",
-        image: "images/alert.png"
+        image: "static/images/alert.png"
     }
 };
 
@@ -178,7 +178,7 @@ const updateNodeData = (node) => {
             fontColor: "white",
             title: "Failed",
             classSuffix: "not-connected",
-            image: "images/node-offline.png"
+            image: "static/images/node-offline.png"
         }
     }
 
@@ -415,7 +415,7 @@ const setCapabilityIcons = (selectedItem) => {
         const img = document.createElement("img");
         const capabilityInfo = CAPABILITY_INFO[ck];
 
-        img.src = `images/${capabilityInfo.image}`;
+        img.src = `static/images/${capabilityInfo.image}`;
         img.className = "node-capability-icon";
         img.title = capabilityInfo.title;
 
@@ -493,11 +493,11 @@ const onLoad = () => {
 }
 
 const onDebug = () => {
-    window.open('/nodes.json')
+    window.open('/data/nodes.json')
 }
 
 const refresh = () => {
-    fetch("nodes.json")
+    fetch("data/nodes.json")
         .then(response => {
             if (!response.ok) throw new Error(response.status);
             return response.json();

@@ -34,7 +34,7 @@ class Node:
         if name_by_user is not None:
             name = name_by_user
 
-        node_id = device.get("NodeID")
+        node_id = int(device.get("NodeID"))
 
         self.neighbors = []
         self.isPrimary = None

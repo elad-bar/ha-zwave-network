@@ -2,6 +2,7 @@ from typing import Optional
 
 
 class NodeRelation:
+
     id: Optional[int]
     toNodeId: Optional[int]
     type: Optional[str]
