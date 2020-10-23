@@ -48,7 +48,10 @@ class ConfigurationManager:
 
         log_level = logging.DEBUG if self.is_debug else logging.INFO
 
-        logging.basicConfig(filename=LOG_FILE, level=log_level)
+        logging.basicConfig(level=log_level,
+                            handlers=[
+                                logging.StreamHandler()
+                            ])
 
         if self.home_assistant_url is None:
             raise Exception("Environment variable HA_URL is empty, cannot initialize server")
