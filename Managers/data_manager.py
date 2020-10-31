@@ -587,7 +587,10 @@ class HAZWaveManager:
                         device_identifier.node_id = external_id
 
                 if len(identifier_parts) > 2:
-                    device_identifier.instance_id = int(identifier_parts[2])
+                    last_part = identifier_parts[2]
+
+                    if isinstance(last_part, int):
+                        device_identifier.instance_id = int(identifier_parts[2])
 
         if not is_valid:
             _LOGGER.warning(f"Invalid device {device_id} identifiers: {identifiers}")

@@ -68,12 +68,17 @@ When there is an issue, it will be much easier to reproduce the errors using tho
 
 ## Changelog:
 
-#### 2020-10-31
+#### 2020-10-31 #2
+
+- Check if identifier is numeric (Instance ID)
+
+#### 2020-10-31 #1
 
 - Better error handling
 - Added error line for all logs related to exceptions
 - Handle WebSocket state changes to reconnect when needed
-- Skip WebSocket SSL verification    
+- Skip WebSocket SSL verification 
+   
 
 #### 2020-10-23
 
