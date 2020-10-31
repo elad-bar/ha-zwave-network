@@ -1,20 +1,22 @@
+import aiofiles as aiofiles
+import asyncio
+import asyncws
 import json
 import logging
+import ssl
+import sys
+
 from asyncio import sleep
-
-from typing import List, Optional
-
-import aiofiles as aiofiles
-
-from Managers.configuration_manager import ConfigurationManager
 from models.consts import *
 
 from models.device_identifier import DeviceIdentifier
+
 from models.node import Node
 from models.node_relation import NodeRelation
 
-import asyncio
-import asyncws
+from typing import List, Optional
+
+from Managers.configuration_manager import ConfigurationManager
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -57,24 +59,42 @@ class HAZWaveManager:
                         await self._login()
 
                     if self._ws_status == WEB_SOCKET_STATUS_AUTHORIZED:
-                        await self._reload_data()
+                        if self._ws.status == 1000:
+                            await self._reload_data()
+                        else:
+                            _LOGGER.warning(f"Connection to server failed [Status {self._ws.status}]")
+
+                            self._ws_status = WEB_SOCKET_STATUS_DISCONNECTED
 
             except Exception as ex:
-                _LOGGER.error(f"Failed to refresh data due to error: {ex}")
+                trace_back = sys.exc_info()[2]
+                line = trace_back.tb_lineno
+
+                _LOGGER.error(f"Failed to initialize due to error: {ex} [LN: {line}]")
+
+                self._ws_status = WEB_SOCKET_STATUS_DISCONNECTED
 
             await sleep(30)
 
     async def _connect(self):
         try:
             _LOGGER.info(f"Connecting to {self._ws_url}")
-            self._ws = await asyncws.connect(f'{self._ws_url}/api/websocket', ssl=True)
+            ssl_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+            ssl_context.verify_flags = False
+
+            self._ws = await asyncws.connect(f'{self._ws_url}/api/websocket', ssl=ssl_context)
 
             self._ws_status = WEB_SOCKET_STATUS_CONNECTED
 
         except Exception as ex:
+            trace_back = sys.exc_info()[2]
+            line = trace_back.tb_lineno
+
             self._ws_status = WEB_SOCKET_STATUS_DISCONNECTED
 
-            _LOGGER.error(f"Failed to connect due to error: {ex}")
+            _LOGGER.error(f"Failed to connect due to error: {ex} [LN: {line}]")
 
     async def _login(self):
         try:
@@ -118,82 +138,98 @@ class HAZWaveManager:
                 self._ws_status = WEB_SOCKET_STATUS_DISCONNECTED
 
         except Exception as ex:
+            trace_back = sys.exc_info()[2]
+            line = trace_back.tb_lineno
+
             self._ws_status = WEB_SOCKET_STATUS_DISCONNECTED
 
-            _LOGGER.error(f"Failed to login due to error: {ex}")
+            _LOGGER.error(f"Failed to login due to error: {ex} [LN: {line}]")
 
     async def _reload_data(self):
         _LOGGER.info("Reloading data")
 
-        message_mapping = {}
-        data = {}
+        try:
+            message_mapping = {}
+            data = {}
 
-        for request_key in WS_MAIN_DETAILS:
-            self._ws_counter += 1
+            for request_key in WS_MAIN_DETAILS:
+                self._ws_counter += 1
 
-            request_type = WS_MAIN_DETAILS.get(request_key)
+                request_type = WS_MAIN_DETAILS.get(request_key)
 
-            message_mapping[self._ws_counter] = request_key
+                message_mapping[self._ws_counter] = request_key
 
-            data = {
-                "id": self._ws_counter,
-                "type": request_type
-            }
+                data = {
+                    "id": self._ws_counter,
+                    "type": request_type
+                }
 
-            await self._ws.send(json.dumps(data))
+                await self._ws.send(json.dumps(data))
 
-        while len(message_mapping.keys()) > 0:
-            message = await self._ws.recv()
-            if message is None:
-                break
+            while len(message_mapping.keys()) > 0:
+                message = await self._ws.recv()
+                if message is None:
+                    break
 
-            message_json = json.loads(message)
-            if self._is_valid(message_json):
-                if "id" in message_json:
-                    message_id = message_json.get("id", 0)
-                    result = message_json.get("result")
+                message_json = json.loads(message)
+                if self._is_valid(message_json):
+                    if "id" in message_json:
+                        message_id = message_json.get("id", 0)
+                        result = message_json.get("result")
 
-                    data_item = message_mapping.get(message_id)
-                    data[data_item] = result
+                        data_item = message_mapping.get(message_id)
+                        data[data_item] = result
 
-                    await self._save_debug_file(data_item, result)
+                        await self._save_debug_file(data_item, result)
 
-                    del message_mapping[message_id]
+                        del message_mapping[message_id]
 
-                else:
-                    _LOGGER.warning(f"Unexpected message received: {message_json}")
+                    else:
+                        _LOGGER.warning(f"Unexpected message received: {message_json}")
 
-        await self.load_devices(data)
+            await self.load_devices(data)
 
-        if self._domain == DOMAIN_OZW:
-            await self._reload_ozw_data()
+            if self._domain == DOMAIN_OZW:
+                await self._reload_ozw_data()
 
-        await self._save_debug_file(f"Nodes", self._devices)
+            await self._save_debug_file(f"Nodes", self._devices)
 
-        self._update_nodes()
+            self._update_nodes()
 
-        _LOGGER.info("Data reloaded")
+            _LOGGER.info("Data reloaded")
+
+        except Exception as ex:
+            trace_back = sys.exc_info()[2]
+            line = trace_back.tb_lineno
+
+            _LOGGER.error(f"Failed to reload data due to error: {ex} [LN: {line}]")
 
     async def _reload_local_data(self):
         _LOGGER.info("Loading from local debug files")
 
-        data = {}
+        try:
+            data = {}
 
-        for key in WS_MAIN_DETAILS.keys():
-            data_item = await self._get_debug_file(key)
-            data[key] = data_item
+            for key in WS_MAIN_DETAILS.keys():
+                data_item = await self._get_debug_file(key)
+                data[key] = data_item
 
-        await self.load_devices(data)
+            await self.load_devices(data)
 
-        if self._domain == DOMAIN_OZW:
-            for device in self._devices:
-                device_node_id = device.get("NodeID")
+            if self._domain == DOMAIN_OZW:
+                for device in self._devices:
+                    device_node_id = device.get("NodeID")
 
-                device_status = await self._get_debug_file(f"OZWStatus_{device_node_id}")
+                    device_status = await self._get_debug_file(f"OZWStatus_{device_node_id}")
 
-                device["OZWStatus"] = device_status
+                    device["OZWStatus"] = device_status
 
-        self._update_nodes()
+            self._update_nodes()
+        except Exception as ex:
+            trace_back = sys.exc_info()[2]
+            line = trace_back.tb_lineno
+
+            _LOGGER.error(f"Failed to reload data locally due to error: {ex} [LN: {line}]")
 
     async def _reload_ozw_data(self):
         _LOGGER.info("Processing OZW data")
@@ -234,7 +270,7 @@ class HAZWaveManager:
                             device_key = self.get_message_id(device_controller_id, device_node_id, device_instance_id)
 
                             if message_device_key == device_key:
-                                _LOGGER.info(f"Processing OZW device {device_node_id}")
+                                _LOGGER.debug(f"Processing OZW device {device_node_id}")
 
                                 await self._save_debug_file(f"OZWStatus_{device_node_id}", result)
 
@@ -248,30 +284,36 @@ class HAZWaveManager:
         _LOGGER.info("OZW data processed")
 
     def _update_nodes(self):
-        nodes = []
+        try:
+            nodes = []
 
-        for device in self._devices:
-            node = Node(device)
+            for device in self._devices:
+                node = Node(device)
 
-            nodes.append(node)
+                nodes.append(node)
 
-        hub = self._get_hub(nodes)
+            hub = self._get_hub(nodes)
 
-        if hub is None or hub.neighbors is None:
-            _LOGGER.error("No hub found")
-            return
+            if hub is None or hub.neighbors is None:
+                _LOGGER.error("No hub found")
+                return
 
-        for node in nodes:
-            self._update_edges(node, nodes)
+            for node in nodes:
+                self._update_edges(node, nodes)
 
-        for hop in range(len(nodes)):
-            if not self._update_hop(hop, nodes):
-                break
+            for hop in range(len(nodes)):
+                if not self._update_hop(hop, nodes):
+                    break
 
-        for node in nodes:
-            self._update_relation_type(node, nodes)
+            for node in nodes:
+                self._update_relation_type(node, nodes)
 
-        self._nodes = nodes
+            self._nodes = nodes
+        except Exception as ex:
+            trace_back = sys.exc_info()[2]
+            line = trace_back.tb_lineno
+
+            _LOGGER.error(f"Failed to update nodes due to error: {ex} [LN: {line}]")
 
     @staticmethod
     def _is_valid(message):
@@ -303,7 +345,10 @@ class HAZWaveManager:
             return self._states
 
         except Exception as ex:
-            _LOGGER.error(f"Failed to retrieve states from HA, error: {ex}")
+            trace_back = sys.exc_info()[2]
+            line = trace_back.tb_lineno
+
+            _LOGGER.error(f"Failed to retrieve states from HA, error: {ex} [LN: {line}]")
 
             return None
 
@@ -324,115 +369,133 @@ class HAZWaveManager:
         return None
 
     def _update_edges(self, node: Node, nodes: List[Node]):
-        neighbors = node.neighbors
+        try:
+            neighbors = node.neighbors
 
-        if node.edges is None:
-            node.edges = []
+            if node.edges is None:
+                node.edges = []
 
-        if neighbors is None:
-            hub = self._get_hub(nodes)
+            if neighbors is None:
+                hub = self._get_hub(nodes)
 
-            if hub is not None:
-                relation = NodeRelation()
-                relation.id = node.id
-                relation.toNodeId = hub.id
-
-                _LOGGER.debug(f"Associate nodes W/O neighbors: {relation.id} --> {relation.toNodeId}")
-
-                node.edges.append(relation)
-
-                if hub.edges is None:
-                    hub.edges = []
-
-                should_created_op = True
-                for neighbor_edge in hub.edges:
-                    if neighbor_edge.toNodeId == node.id:
-                        should_created_op = False
-
-                if should_created_op:
-                    op_relation = NodeRelation()
-                    op_relation.id = hub.id
-                    op_relation.toNodeId = node.id
-
-                    _LOGGER.debug(f"Associate reverse nodes W/O neighbors: {op_relation.id} --> {op_relation.toNodeId}")
-
-                    hub.edges.append(op_relation)
-        else:
-            for neighbor_id in neighbors:
-                neighbor = self._get_node(nodes, neighbor_id)
-
-                if neighbor is not None:
+                if hub is not None:
                     relation = NodeRelation()
                     relation.id = node.id
-                    relation.toNodeId = neighbor.id
+                    relation.toNodeId = hub.id
 
-                    _LOGGER.debug(f"Associate nodes: {relation.id} --> {relation.toNodeId}")
+                    _LOGGER.debug(f"Associate nodes W/O neighbors: {relation.id} --> {relation.toNodeId}")
 
                     node.edges.append(relation)
 
-                    if neighbor.edges is None:
-                        neighbor.edges = []
+                    if hub.edges is None:
+                        hub.edges = []
 
                     should_created_op = True
-                    for neighbor_edge in neighbor.edges:
+                    for neighbor_edge in hub.edges:
                         if neighbor_edge.toNodeId == node.id:
                             should_created_op = False
 
                     if should_created_op:
                         op_relation = NodeRelation()
-                        op_relation.id = neighbor.id
+                        op_relation.id = hub.id
                         op_relation.toNodeId = node.id
 
-                        _LOGGER.debug(f"Associate reverse nodes: {op_relation.id} --> {op_relation.toNodeId}")
+                        _LOGGER.debug(f"Associate reverse nodes W/O neighbors: {op_relation.id} --> {op_relation.toNodeId}")
 
-                        neighbor.edges.append(op_relation)
+                        hub.edges.append(op_relation)
+            else:
+                for neighbor_id in neighbors:
+                    neighbor = self._get_node(nodes, neighbor_id)
+
+                    if neighbor is not None:
+                        relation = NodeRelation()
+                        relation.id = node.id
+                        relation.toNodeId = neighbor.id
+
+                        _LOGGER.debug(f"Associate nodes: {relation.id} --> {relation.toNodeId}")
+
+                        node.edges.append(relation)
+
+                        if neighbor.edges is None:
+                            neighbor.edges = []
+
+                        should_created_op = True
+                        for neighbor_edge in neighbor.edges:
+                            if neighbor_edge.toNodeId == node.id:
+                                should_created_op = False
+
+                        if should_created_op:
+                            op_relation = NodeRelation()
+                            op_relation.id = neighbor.id
+                            op_relation.toNodeId = node.id
+
+                            _LOGGER.debug(f"Associate reverse nodes: {op_relation.id} --> {op_relation.toNodeId}")
+
+                            neighbor.edges.append(op_relation)
+        except Exception as ex:
+            trace_back = sys.exc_info()[2]
+            line = trace_back.tb_lineno
+
+            _LOGGER.error(f"Failed to update edges due to error: {ex} [LN: {line}]")
 
     def _update_hop(self, hop: int, nodes: List[Node]) -> bool:
         result = False
         hop_nodes = []
 
-        for node in nodes:
-            if node.hop == hop:
-                hop_nodes.append(node)
+        try:
+            for node in nodes:
+                if node.hop == hop:
+                    hop_nodes.append(node)
 
-                result = True
+                    result = True
 
-        for node in hop_nodes:
-            current_hop = node.hop
-            sub_nodes: List[Node] = []
+            for node in hop_nodes:
+                current_hop = node.hop
+                sub_nodes: List[Node] = []
 
-            _LOGGER.debug(f"Processing node {node.id}, HOP:{node.hop}")
+                _LOGGER.debug(f"Processing node {node.id}, HOP:{node.hop}")
 
-            for edge in node.edges:
-                to_node = self._get_node(nodes, edge.toNodeId)
+                for edge in node.edges:
+                    to_node = self._get_node(nodes, edge.toNodeId)
 
-                _LOGGER.debug(f"Processing nested node {to_node.id}, HOP:{to_node.hop}")
+                    _LOGGER.debug(f"Processing nested node {to_node.id}, HOP:{to_node.hop}")
 
-                if to_node is not None and to_node.hop == -1:
-                    to_node.hop = current_hop + 1
+                    if to_node is not None and to_node.hop == -1:
+                        to_node.hop = current_hop + 1
 
-                    _LOGGER.debug(f"Changed HOP of nested node {to_node.id} to {to_node.hop}")
+                        _LOGGER.debug(f"Changed HOP of nested node {to_node.id} to {to_node.hop}")
 
-                    sub_nodes.append(to_node)
+                        sub_nodes.append(to_node)
+        except Exception as ex:
+            trace_back = sys.exc_info()[2]
+            line = trace_back.tb_lineno
+
+            _LOGGER.error(f"Failed to update hop due to error: {ex} [LN: {line}]")
 
         return result
 
     def _update_relation_type(self, node: Node, nodes: List[Node]):
-        for edge in node.edges:
-            to_node = self._get_node(nodes, edge.toNodeId)
+        try:
+            for edge in node.edges:
+                to_node = self._get_node(nodes, edge.toNodeId)
 
-            edge_type = "child"
+                edge_type = "child"
 
-            if node.hop == to_node.hop:
-                edge_type = "sibling"
+                if node.hop == to_node.hop:
+                    edge_type = "sibling"
 
-            elif node.hop < to_node.hop and not to_node.isPrimary:
-                edge_type = "parent"
+                elif node.hop < to_node.hop and not to_node.isPrimary:
+                    edge_type = "parent"
 
-            edge.type = edge_type
+                edge.type = edge_type
 
-            msg = f"Update relation of node {edge.id} to node {edge.toNodeId}, Type: {edge.type}, HOP: {node.hop}"
-            _LOGGER.debug(msg)
+                msg = f"Update relation of node {edge.id} to node {edge.toNodeId}, Type: {edge.type}, HOP: {node.hop}"
+                _LOGGER.debug(msg)
+        except Exception as ex:
+            trace_back = sys.exc_info()[2]
+            line = trace_back.tb_lineno
+
+            _LOGGER.error(f"Failed to update relation type due for {node} to error: {ex} [LN: {line}]")
 
     def get_nodes(self):
         return self._nodes
@@ -440,48 +503,54 @@ class HAZWaveManager:
     async def load_devices(self, data):
         _LOGGER.info(f"Loading devices")
 
-        devices = data.get("Devices")
-        entities = data.get("Entities")
-        states = data.get("States")
+        devices = data.get("Devices", [])
+        entities = data.get("Entities", [])
+        states = data.get("States", [])
 
         all_devices = {}
 
-        for device in devices:
-            device_id = device.get("id")
-            device_identifier = self.get_device_identifier(device)
+        try:
+            for device in devices:
+                device_id = device.get("id")
+                device_identifier = self.get_device_identifier(device)
 
-            device["Domain"] = device_identifier.domain
-            device["ControllerID"] = device_identifier.controller_id
-            device["NodeID"] = device_identifier.node_id
-            device["InstanceID"] = device_identifier.instance_id
+                device["Domain"] = device_identifier.domain
+                device["ControllerID"] = device_identifier.controller_id
+                device["NodeID"] = device_identifier.node_id
+                device["InstanceID"] = device_identifier.instance_id
 
-            for entity in entities:
-                entity_device_id = entity.get("device_id")
+                for entity in entities:
+                    entity_device_id = entity.get("device_id")
 
-                if device_id == entity_device_id:
-                    entity_id = entity.get("entity_id")
+                    if device_id == entity_device_id:
+                        entity_id = entity.get("entity_id")
 
-                    for state in states:
-                        state_entity_id = state.get("entity_id")
+                        for state in states:
+                            state_entity_id = state.get("entity_id")
 
-                        if state_entity_id == entity_id:
-                            entity["State"] = state
+                            if state_entity_id == entity_id:
+                                entity["State"] = state
 
-                            if f"{DOMAIN_ZWAVE}." in state_entity_id:
-                                device["ZWaveStatus"] = state
+                                if f"{DOMAIN_ZWAVE}." in state_entity_id:
+                                    device["ZWaveStatus"] = state
 
-                    if "Entities" not in device:
-                        device["Entities"] = []
+                        if "Entities" not in device:
+                            device["Entities"] = []
 
-                    device["Entities"].append(entity)
+                        device["Entities"].append(entity)
 
-            if all_devices.get(device_identifier.domain) is None:
-                all_devices[device_identifier.domain] = []
+                if all_devices.get(device_identifier.domain) is None:
+                    all_devices[device_identifier.domain] = []
 
-            all_devices[device_identifier.domain].append(device)
+                all_devices[device_identifier.domain].append(device)
 
-        if len(all_devices.get(DOMAIN_OZW, [])) > 0:
-            self._domain = DOMAIN_OZW
+            if len(all_devices.get(DOMAIN_OZW, [])) > 0:
+                self._domain = DOMAIN_OZW
+        except Exception as ex:
+            trace_back = sys.exc_info()[2]
+            line = trace_back.tb_lineno
+
+            _LOGGER.error(f"Failed to load devices due to error: {ex} [LN: {line}]")
 
         self._devices = all_devices.get(self._domain, [])
 
@@ -544,22 +613,28 @@ class HAZWaveManager:
     async def load_ozw_device(self, device) -> Optional[int]:
         message_id = None
 
-        node_id = device.get("NodeID")
-        instance_id = device.get("InstanceID")
+        try:
+            node_id = device.get("NodeID")
+            instance_id = device.get("InstanceID")
 
-        if instance_id == 1:
-            self._ws_counter += 1
+            if instance_id == 1:
+                self._ws_counter += 1
 
-            message_id = self._ws_counter
+                message_id = self._ws_counter
 
-            device_status = {
-                "id": self._ws_counter,
-                "type": "ozw/node_status",
-                "ozw_instance": instance_id,
-                "node_id": node_id
-            }
+                device_status = {
+                    "id": self._ws_counter,
+                    "type": "ozw/node_status",
+                    "ozw_instance": instance_id,
+                    "node_id": node_id
+                }
 
-            await self._ws.send(json.dumps(device_status))
+                await self._ws.send(json.dumps(device_status))
+        except Exception as ex:
+            trace_back = sys.exc_info()[2]
+            line = trace_back.tb_lineno
+
+            _LOGGER.error(f"Failed to load OZW device {device} due to error: {ex} [LN: {line}]")
 
         return message_id
 

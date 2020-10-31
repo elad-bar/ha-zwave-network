@@ -67,6 +67,14 @@ Container generates debug volume with all JSONs and log files,
 When there is an issue, it will be much easier to reproduce the errors using those files
 
 ## Changelog:
+
+#### 2020-10-31
+
+- Better error handling
+- Added error line for all logs related to exceptions
+- Handle WebSocket state changes to reconnect when needed
+- Skip WebSocket SSL verification    
+
 #### 2020-10-23
 
 - WebServer changed to Flask
