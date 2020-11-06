@@ -30,7 +30,6 @@ class HAZWaveManager:
         self._devices = []
         self._nodes: List[Node] = []
 
-        self._verify = False if "wss://" in self._ws_url else None
         self._states = None
         self._domain = DOMAIN_ZWAVE
 
@@ -40,6 +39,14 @@ class HAZWaveManager:
 
         self._ws_counter = 1
 
+        self._ssl_context = None
+
+        if "wss://" in self._ws_url:
+            self._ssl_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+            self._ssl_context.check_hostname = False
+            self._ssl_context.verify_mode = ssl.CERT_NONE
+            self._ssl_context.verify_flags = False
+
     def initialize(self):
         asyncio.run(self._initialize())
 
@@ -47,6 +54,8 @@ class HAZWaveManager:
         is_local = self._configuration.is_local
 
         while True:
+            delay_between_iteration = 30
+
             try:
                 if is_local:
                     await self._reload_local_data()
@@ -58,13 +67,17 @@ class HAZWaveManager:
                     if self._ws_status == WEB_SOCKET_STATUS_CONNECTED:
                         await self._login()
 
-                    if self._ws_status == WEB_SOCKET_STATUS_AUTHORIZED:
-                        if self._ws.status == 1000:
-                            await self._reload_data()
-                        else:
-                            _LOGGER.warning(f"Connection to server failed [Status {self._ws.status}]")
+                    is_authorized = self._ws_status == WEB_SOCKET_STATUS_AUTHORIZED
 
-                            self._ws_status = WEB_SOCKET_STATUS_DISCONNECTED
+                    if is_authorized:
+                        await self._reload_data()
+
+                    if is_authorized and self._ws.status != 1000:
+                        _LOGGER.warning(f"Connection to server failed [Status {self._ws.status}]")
+
+                        delay_between_iteration = 1
+
+                        self._ws_status = WEB_SOCKET_STATUS_DISCONNECTED
 
             except Exception as ex:
                 trace_back = sys.exc_info()[2]
@@ -74,17 +87,13 @@ class HAZWaveManager:
 
                 self._ws_status = WEB_SOCKET_STATUS_DISCONNECTED
 
-            await sleep(30)
+            await sleep(delay_between_iteration)
 
     async def _connect(self):
         try:
             _LOGGER.info(f"Connecting to {self._ws_url}")
-            ssl_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
-            ssl_context.check_hostname = False
-            ssl_context.verify_mode = ssl.CERT_NONE
-            ssl_context.verify_flags = False
 
-            self._ws = await asyncws.connect(f'{self._ws_url}/api/websocket', ssl=ssl_context)
+            self._ws = await asyncws.connect(f'{self._ws_url}/api/websocket', ssl=self._ssl_context)
 
             self._ws_status = WEB_SOCKET_STATUS_CONNECTED
 

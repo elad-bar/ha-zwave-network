@@ -68,6 +68,10 @@ When there is an issue, it will be much easier to reproduce the errors using tho
 
 ## Changelog:
 
+#### 2020-11-06
+
+- Fix web-socket connection without certificate
+
 #### 2020-10-31 #2
 
 - Check if identifier is numeric (Instance ID)
