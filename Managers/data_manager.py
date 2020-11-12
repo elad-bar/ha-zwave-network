@@ -324,8 +324,7 @@ class HAZWaveManager:
 
             _LOGGER.error(f"Failed to update nodes due to error: {ex} [LN: {line}]")
 
-    @staticmethod
-    def _is_valid(message):
+    def _is_valid(self, message):
         message_id = message.get("id", 0)
         success = message.get("success", False)
         error = message.get("error")
@@ -343,7 +342,10 @@ class HAZWaveManager:
                 error_message = f"{error_message} {error_code_details.lower()} [#{error_code}]"
 
                 if error_data is not None:
-                    error_message = f"{error_message}, additional details: {error_data}"
+                    if error_code_details.lower() == "unknown_command":
+                        self._ws_status = WEB_SOCKET_STATUS_DISCONNECTED
+
+                    error_message = f"{error_message}, additional details: {error_data}, message: {message}"
 
             _LOGGER.error(error_message)
 
